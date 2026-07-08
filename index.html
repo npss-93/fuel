@@ -1943,7 +1943,7 @@
         if (!STATE.oilPrices) return;
         document.getElementById("oilDateLabel").textContent =
           "ณ " +
-          (STATE.oilPrices.date || "-") +
+          (STATE.oilPrices.dateNow || "-") +
           (STATE.oilPrices._cached ? " (แคช)" : "");
         const wrap = document.getElementById("priceTicker");
         const list = STATE.oilPrices.list || [];
