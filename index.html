@@ -498,6 +498,19 @@
         outline: none;
         transition: border-color 0.15s;
       }
+      /* กำหนดสีพื้นหลัง/ตัวหนังสือของ dropdown ให้ชัดเจนทุกที่ที่ใช้ select
+         (ป้องกันปัญหา option สีเดียวกับพื้นหลังตอนกดเปิดดรอปดาวน์) */
+      select {
+        background-color: var(--surface-2);
+        color: var(--text);
+      }
+      select option {
+        background-color: var(--surface-2);
+        color: var(--text);
+      }
+      select.btn-outline {
+        background-color: var(--surface-2);
+      }
       .input:focus {
         border-color: var(--accent);
       }
@@ -1044,7 +1057,27 @@
             </div>
           </div>
 
-          <div class="section-title">ภาพรวมเดือนนี้</div>
+          <!-- ดรอปดาวน์เลือกเดือน เฉพาะหน้าหลักเท่านั้น -->
+          <div
+            style="
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              margin-bottom: 12px;
+              padding: 0 4px;
+            "
+          >
+            <span class="section-title">ประวัติการเติมน้ำมัน</span>
+            <select
+              id="mainMonthFilter"
+              class="btn btn-sm btn-outline"
+              style="font-size: 13px; padding: 4px 8px; margin-top: 10px;"
+              onchange="changeMainMonth(this.value)"
+            >
+              <!-- รายชื่อเดือนจะถูกสร้างอัตโนมัติ -->
+            </select>
+          </div>
+
           <div class="stat-grid">
             <div class="stat-box">
               <div class="k">ระยะทางรวม</div>
@@ -1067,13 +1100,13 @@
           <div class="section-title">
             <div>
               ราคาน้ำมันวันนี้
+              <br />
               <span
                 id="oilRemark2"
                 style="
-                  font-size: 11px;
-                  font-weight: normal;
+                  font-size: 9px;
+                  font-weight: bold;
                   color: var(--text-dim);
-                  margin-left: 4px;
                 "
               ></span>
             </div>
@@ -1092,7 +1125,7 @@
           </div>
 
           <div class="section-title">
-            รายการล่าสุด
+            รายการเติมน้ำมัน
             <span class="link" onclick="openView('stats')">ดูทั้งหมด</span>
           </div>
           <div class="card" id="recentLogsCard">
@@ -1507,7 +1540,7 @@
       // ---------------- Reference data ----------------
       // ชนิดน้ำมันไม่ hardcode อีกต่อไป — ดึงสด ๆ จากรายการราคาน้ำมันบางจาก (STATE.oilPrices.list)
       // แต่ละรายการมี { name, icon, priceToday, priceYesterday, diff }
-      const CAR_ICONS = ["🚗", "🚙", "🚕", "🚐", "🛻", "🏍️", "🚓", "🚌"];
+      const CAR_ICONS = ["🚗", "🚙", "🚕", "🚐", "🛻", "🏍️", "🛵", "🚓", "🚌"];
       const CAR_COLORS = [
         "#FF7A29",
         "#22D3B0",
@@ -1533,6 +1566,8 @@
         statsPeriod: "month",
         costChart: null,
         kmlChart: null,
+        logPage: 1,
+        mainMonth: new Date().toISOString().substring(0, 7),
       };
 
       // ---------------- API ----------------
@@ -1585,6 +1620,8 @@
           return;
         }
         bootstrap(false);
+
+
       }
 
       // ดึงข้อมูลผ่าน CSV เร็วกว่าแบบเดิม 10 เท่า
@@ -1697,6 +1734,8 @@
             (l) => String(l.carId) === String(STATE.activeCarId),
           );
           STATE.logs = enrichLogs(carLogs);
+
+          populateMainMonthDropdown();
 
           renderCarChip();
           renderCarsList();
@@ -1818,6 +1857,7 @@
         renderCarChip();
         renderCarsList();
         STATE.logs = await apiGet("getFuelLogs", { carId });
+        populateMainMonthDropdown();
         renderHome();
         openView("home");
       }
@@ -1956,9 +1996,8 @@
       function renderOilPrices() {
         if (!STATE.oilPrices) return;
         document.getElementById("oilDateLabel").textContent =
-          "ณ " +
-          (STATE.oilPrices.dateNow || "-") +
-          (STATE.oilPrices._cached ? " (แคช)" : "");
+          STATE.oilPrices.dateNow || "-";
+        //   (STATE.oilPrices._cached ? " (แคช)" : "");
 
         const remark2El = document.getElementById("oilRemark2");
         if (remark2El) {
@@ -2117,70 +2156,75 @@
             : "เลือกหรือเพิ่มรถก่อน";
         }
 
-        // เดือนนี้
-        const now = new Date();
-        const thisMonthLogs = logs.filter((l) => {
-          const d = new Date(l.date);
-          return (
-            d.getFullYear() === now.getFullYear() &&
-            d.getMonth() === now.getMonth()
-          );
-        });
-        const dist = thisMonthLogs.reduce(
-          (a, l) => a + (l.distanceFromPrevious || 0),
-          0,
-        );
-        const cost = thisMonthLogs.reduce(
-          (a, l) => a + (Number(l.totalCost) || 0),
-          0,
-        );
-        document.getElementById("homeDistance").innerHTML =
-          fmt(dist) + "<small> กม.</small>";
-        document.getElementById("homeCost").innerHTML =
-          fmt(cost) + "<small> ฿</small>";
-        document.getElementById("homeFills").innerHTML =
-          thisMonthLogs.length + "<small> ครั้ง</small>";
-        document.getElementById("homeCostKm").innerHTML =
-          (dist > 0 ? fmt(cost / dist) : "--") + "<small> ฿</small>";
+        // สรุปยอดของ "เดือนที่เลือก" จากดรอปดาวน์ (STATE.mainMonth)
+        updateHomeMonthSummary();
 
-        // recent logs
-        const card = document.getElementById("recentLogsCard");
-        if (!logs.length) {
-          card.innerHTML =
-            '<div class="empty-state"><div class="em-ic">🛢️</div><div class="em-t">ยังไม่มีข้อมูล</div><div class="em-s">กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก</div></div>';
-        } else {
-          const recent = [...logs].reverse().slice(0, 5);
-          card.innerHTML = recent.map(logRowHtml).join("");
-        }
+        // รายการเติมน้ำมัน (การ์ดเดียวกับที่กรองตามเดือนที่เลือก)
+        // เดิมตรงนี้ทำหน้าที่โชว์ 5 รายการล่าสุดของ recentLogsCard เอง แต่ตอนนี้
+        // ให้ renderMainLogs() เป็นคนดูแลการ์ดใบนี้แทนที่เดียว (กรองตามเดือน)
+        // เพื่อไม่ให้เขียนทับกัน จึงย้าย logic ไปรวมไว้ที่ renderMainLogs()
+        renderMainLogs();
       }
 
       function logRowHtml(l) {
+        // ปรับขนาดป้าย (Pill) ให้เล็กลง และลดความหนาของตัวอักษรไม่ให้เด่นเกินไป
         const kmlPill =
           l.kml != null
-            ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}">${l.kml} กม./ล.</span>`
+            ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}" style="font-size: 11px; padding: 2px 6px; font-weight: normal;">${l.kml} กม./ลิตร</span>`
             : "";
 
-        // ค้นหา iconLog ปัจจุบันจาก STATE.oilPrices
         let displayIcon = l.fuelIcon;
         if (STATE.oilPrices && STATE.oilPrices.list) {
           const oilInfo = STATE.oilPrices.list.find(
             (v) => v.name === l.fuelType,
           );
           if (oilInfo && oilInfo.iconLog) {
-            displayIcon = oilInfo.iconLog; // ใช้ iconLog แทนถ้ามีข้อมูล
+            displayIcon = oilInfo.iconLog;
           }
         }
 
+        // ปรับสไตล์รูปภาพไม่ให้ล้น และจัดกึ่งกลาง
         const icon = displayIcon
-          ? `<img src="${displayIcon}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:5px;" onerror="this.style.display='none'">`
+          ? `<img src="${displayIcon}" alt="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;" onerror="this.style.display='none'">`
           : "⛽";
-        return `<div class="log-item">
-            <div class="log-ic">${icon}</div>
-            <div class="log-main">
-            <div class="l1"><span>${escapeHtml(l.fuelType || "")}</span><span class="log-cost">฿${fmt(l.totalCost)}</span></div>
-            <div class="l2"><span>${formatDate(l.date)}</span><span>${fmt(l.liters)} ล.</span>${l.distanceFromPrevious ? `<span>${fmt(l.distanceFromPrevious)} กม.</span>` : ""}${kmlPill}</div>
-            </div>
-            </div>`;
+
+        return `
+<div class="log-item" style="align-items: center; padding: 12px 0;">
+  
+  <!-- จัดไอคอนให้อยู่กึ่งกลางแนวตั้ง (Center) ด้วย Flexbox -->
+  <div class="log-ic" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; flex-shrink: 0; margin-right: 12px;">
+    ${icon}
+  </div>
+  
+  <!-- ลดช่องว่างระหว่างบรรทัด (gap) ให้ดูเป็นกลุ่มเดียวกันมากขึ้น -->
+  <div class="log-main" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+    
+    <!-- แถวที่ 1: ชนิดน้ำมัน และ ราคา -->
+    <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.2;">
+      <span style="font-weight: 600; color: var(--text); font-size: 14px;">${escapeHtml(l.fuelType || "ไม่ระบุ")}</span>
+      <span style="font-weight: 600; color: var(--primary); font-size: 14px;">฿${fmt(l.totalCost)}</span>
+    </div>
+
+    <!-- แถวที่ 2: วันที่ และ จำนวนลิตร -->
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); line-height: 1.2;">
+      <span>${formatDate(l.date)}</span>
+      <span>${fmt(l.liters)} ลิตร</span>
+    </div>
+
+    <!-- แถวที่ 3: ระยะทาง และ กม./ลิตร (เอาเส้นประออก ลดความเข้มลงให้ดูสมดุล) -->
+    ${
+      l.distanceFromPrevious || l.kml
+        ? `
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+      <span style="opacity: 0.8;">ระยะทาง: ${l.distanceFromPrevious ? `${fmt(l.distanceFromPrevious)} กม.` : "-"}</span>
+      ${kmlPill}
+    </div>
+    `
+        : ""
+    }
+    
+  </div>
+</div>`;
       }
 
       // ---------------- Log form ----------------
@@ -2511,10 +2555,48 @@
           });
         }
 
+        // --- ระบบแบ่งหน้าประวัติการเติม (Pagination) ---
         const allCard = document.getElementById("allLogsCard");
-        allCard.innerHTML = !STATE.logs.length
-          ? '<div class="empty-state"><div class="em-ic">📄</div><div class="em-t">ยังไม่มีประวัติ</div></div>'
-          : [...STATE.logs].reverse().map(logRowHtml).join("");
+        if (!STATE.logs.length) {
+          allCard.innerHTML =
+            '<div class="empty-state"><div class="em-ic">📄</div><div class="em-t">ยังไม่มีประวัติ</div></div>';
+          return;
+        }
+
+        const ITEMS_PER_PAGE = 5; // กำหนดจำนวนรายการที่อยากให้แสดงต่อ 1 หน้า (แก้เลขได้)
+        const reversedLogs = [...STATE.logs].reverse();
+        const totalPages = Math.ceil(reversedLogs.length / ITEMS_PER_PAGE);
+
+        // ป้องกันกรณีหน้าเกิน หรือน้อยกว่า 1
+        if (STATE.logPage > totalPages) STATE.logPage = totalPages;
+        if (STATE.logPage < 1) STATE.logPage = 1;
+
+        // คำนวณจุดตัดข้อมูล
+        const startIndex = (STATE.logPage - 1) * ITEMS_PER_PAGE;
+        const paginatedLogs = reversedLogs.slice(
+          startIndex,
+          startIndex + ITEMS_PER_PAGE,
+        );
+
+        let html = paginatedLogs.map(logRowHtml).join("");
+
+        // สร้างปุ่มกดเปลี่ยนหน้า (แสดงเมื่อมีข้อมูลมากกว่า 1 หน้า)
+        if (totalPages > 1) {
+          html += `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px; padding-top: 14px; border-top: 1px solid var(--border);">
+              <button class="btn btn-sm btn-outline" ${STATE.logPage === 1 ? 'disabled style="opacity:0.3"' : `onclick="changeLogPage(-1)"`}>
+                ◀ ล่าสุด
+              </button>
+              <span style="font-size: 13px; color: var(--text-muted); font-weight: 600;">
+                หน้า ${STATE.logPage} / ${totalPages}
+              </span>
+              <button class="btn btn-sm btn-outline" ${STATE.logPage === totalPages ? 'disabled style="opacity:0.3"' : `onclick="changeLogPage(1)"`}>
+                เก่าลง ▶
+              </button>
+            </div>
+          `;
+        }
+        allCard.innerHTML = html;
       }
 
       // ---------------- Utils ----------------
@@ -2545,6 +2627,108 @@
               "'": "&#39;",
             })[c],
         );
+      }
+      // ฟังก์ชันสำหรับกดปุ่มเปลี่ยนหน้าในประวัติการเติม
+      function changeLogPage(direction) {
+        STATE.logPage += direction;
+        renderStats(); // รีเฟรชหน้าสรุปผลใหม่
+      }
+
+      // 1. ฟังก์ชันสร้างรายชื่อเดือนใส่ดรอปดาวน์ของหน้าหลัก
+     function populateMainMonthDropdown() {
+  const select = document.getElementById("mainMonthFilter");
+  if (!select) return;
+
+  const carLogs = STATE.logs.filter(l => l.carId === STATE.activeCarId);
+  const monthsMap = {};
+
+  carLogs.forEach(l => {
+    // ข้อมูลใน Sheets คือ 2026-07-08 ให้ตัดแค่ 7 ตัวแรกจะได้ "2026-07"
+    if (l.date && l.date.length >= 7) {
+      const monthKey = l.date.substring(0, 7); 
+      monthsMap[monthKey] = true;
+    }
+  });
+
+  const sortedMonths = Object.keys(monthsMap).sort().reverse();
+  const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+
+  select.innerHTML = sortedMonths.map(m => {
+    const [yyyy, mm] = m.split('-'); // แยกปีและเดือนจาก "2026-07"
+    const name = thaiMonths[parseInt(mm) - 1];
+    const thaiYear = parseInt(yyyy) + 543;
+    return `<option value="${m}">${name} ${thaiYear}</option>`;
+  }).join('');
+
+  if (sortedMonths.includes(STATE.mainMonth)) {
+    select.value = STATE.mainMonth;
+  } else if (sortedMonths.length > 0) {
+    STATE.mainMonth = sortedMonths[0];
+    select.value = STATE.mainMonth;
+  }
+}
+
+      // 2. ฟังก์ชันกรองและแสดงผลรายการประวัติบนหน้าหลัก
+      // ใช้การ์ดเดียวกับ "รายการเติมน้ำมัน" (id="recentLogsCard") ที่มีอยู่แล้ว
+      // แทนที่จะสร้างการ์ดใหม่ซ้ำซ้อน — การ์ดนี้คนละอันกับ id="allLogsCard" ที่อยู่
+      // ในหน้า "สรุปผล" (ซึ่งโชว์ประวัติทั้งหมดแบบแบ่งหน้า ไม่เกี่ยวกับเดือนที่เลือก
+      // ในหน้าหลัก)
+     function renderMainLogs() {
+  const container = document.getElementById("recentLogsCard");
+  if (!container) return;
+
+  const carLogs = STATE.logs.filter(l => l.carId === STATE.activeCarId);
+
+  if (!carLogs.length) {
+    container.innerHTML =
+      '<div class="empty-state"><div class="em-ic">🛢️</div><div class="em-t">ยังไม่มีข้อมูล</div><div class="em-s">กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก</div></div>';
+    return;
+  }
+
+  // กรองข้อมูลโดยเทียบกับ STATE.mainMonth ซึ่งเก็บค่าเป็น "YYYY-MM"
+  const filteredLogs = carLogs.filter(l => l.date && l.date.startsWith(STATE.mainMonth));
+
+  if (!filteredLogs.length) {
+    container.innerHTML = '<div class="empty-state">ไม่มีประวัติในเดือนนี้</div>';
+    return;
+  }
+
+  // เรียงลำดับจากใหม่ไปเก่า
+  container.innerHTML = [...filteredLogs].reverse().map(logRowHtml).join("");
+}
+
+      // 2.1 คำนวณสรุปยอด (ระยะทาง/ค่าน้ำมัน/จำนวนครั้ง/บาทต่อกม.) ของ "เดือนที่เลือก"
+      // ใช้ STATE.mainMonth แทนเดือนปัจจุบันจริง ๆ เพื่อให้ตัวเลขเปลี่ยนตามดรอปดาวน์
+      function updateHomeMonthSummary() {
+        const carLogs = STATE.logs.filter(
+          (l) => l.carId === STATE.activeCarId,
+        );
+        const monthLogs = carLogs.filter(
+          (l) => l.date && l.date.startsWith(STATE.mainMonth),
+        );
+        const dist = monthLogs.reduce(
+          (a, l) => a + (l.distanceFromPrevious || 0),
+          0,
+        );
+        const cost = monthLogs.reduce(
+          (a, l) => a + (Number(l.totalCost) || 0),
+          0,
+        );
+        document.getElementById("homeDistance").innerHTML =
+          fmt(dist) + "<small> กม.</small>";
+        document.getElementById("homeCost").innerHTML =
+          fmt(cost) + "<small> ฿</small>";
+        document.getElementById("homeFills").innerHTML =
+          monthLogs.length + "<small> ครั้ง</small>";
+        document.getElementById("homeCostKm").innerHTML =
+          (dist > 0 ? fmt(cost / dist) : "--") + "<small> ฿</small>";
+      }
+
+      // 3. ฟังก์ชันเหตุการณ์ตอนกดเปลี่ยนเดือนที่ดรอปดาวน์หน้าหลัก
+      function changeMainMonth(val) {
+        STATE.mainMonth = val;
+        renderMainLogs(); // สั่งอัปเดตรายการประวัติของเดือนนั้นบนหน้าหลัก
+        updateHomeMonthSummary(); // สั่งอัปเดตยอดสรุปด้านบนให้ตรงกับเดือนที่เลือก
       }
     </script>
     <!-- Loading Overlay -->
