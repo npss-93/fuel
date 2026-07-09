@@ -1071,7 +1071,7 @@
             <select
               id="mainMonthFilter"
               class="btn btn-sm btn-outline"
-              style="font-size: 13px; padding: 4px 8px; margin-top: 10px;"
+              style="font-size: 13px; padding: 4px 8px"
               onchange="changeMainMonth(this.value)"
             >
               <!-- รายชื่อเดือนจะถูกสร้างอัตโนมัติ -->
@@ -1105,7 +1105,7 @@
                 id="oilRemark2"
                 style="
                   font-size: 9px;
-                  font-weight: bold;
+                  font-weight: normal;
                   color: var(--text-dim);
                 "
               ></span>
@@ -1141,7 +1141,7 @@
 
         <!-- ============ ADD LOG VIEW ============ -->
         <section class="view" data-view="log" id="view-log">
-          <div class="section-title" style="margin-top: 6px">
+          <div class="section-title" style="margin-top: 6px" id="logViewTitle">
             บันทึกการเติมน้ำมัน
           </div>
 
@@ -1272,6 +1272,21 @@
               id="submitLogBtn"
             >
               <span id="submitLogText">บันทึกการเติมน้ำมัน</span>
+            </button>
+            <button
+              class="btn btn-outline"
+              style="margin-top: 10px"
+              onclick="cancelLogForm()"
+            >
+              ยกเลิก
+            </button>
+            <button
+              class="btn btn-danger"
+              style="margin-top: 10px; display: none"
+              id="deleteLogBtn"
+              onclick="deleteLog(STATE.editingLogId)"
+            >
+              ลบรายการนี้
             </button>
           </div>
         </section>
@@ -1540,7 +1555,7 @@
       // ---------------- Reference data ----------------
       // ชนิดน้ำมันไม่ hardcode อีกต่อไป — ดึงสด ๆ จากรายการราคาน้ำมันบางจาก (STATE.oilPrices.list)
       // แต่ละรายการมี { name, icon, priceToday, priceYesterday, diff }
-      const CAR_ICONS = ["🚗", "🚙", "🚕", "🚐", "🛻", "🏍️", "🛵", "🚓", "🚌"];
+      const CAR_ICONS = ["🚗", "🚙", "🚕", "🚐", "🛻", "🏍️", "🚓", "🚌"];
       const CAR_COLORS = [
         "#FF7A29",
         "#22D3B0",
@@ -1568,6 +1583,7 @@
         kmlChart: null,
         logPage: 1,
         mainMonth: new Date().toISOString().substring(0, 7),
+        editingLogId: null,
       };
 
       // ---------------- API ----------------
@@ -1769,6 +1785,8 @@
         document
           .querySelectorAll(".nav-btn")
           .forEach((b) => b.classList.toggle("active", b.dataset.nav === name));
+        // ออกจากหน้าฟอร์มโดยไม่กดยกเลิก ให้ถือว่ายกเลิกการแก้ไขไปด้วย
+        if (name !== "log") STATE.editingLogId = null;
         if (name === "log") prepareLogForm();
         if (name === "stats") renderStats();
         window.scrollTo(0, 0);
@@ -2188,6 +2206,9 @@
           ? `<img src="${displayIcon}" alt="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;" onerror="this.style.display='none'">`
           : "⛽";
 
+        // รหัสรายการ ใช้อ้างอิงตอนแก้ไข/ลบ (ต้องมาจาก backend เป็น l.id)
+        const logId = l.id != null ? String(l.id).replace(/'/g, "\\'") : "";
+
         return `
 <div class="log-item" style="align-items: center; padding: 12px 0;">
   
@@ -2222,7 +2243,35 @@
     `
         : ""
     }
-    
+
+    <!-- แถวที่ 4: โน้ต (ถ้ามี) -->
+    ${
+      l.note
+        ? `
+    <div style="display: flex; align-items: flex-start; gap: 4px; font-size: 12px; color: var(--text-muted); margin-top: 2px; opacity: 0.85;">
+      <span>📝</span>
+      <span style="word-break: break-word;">${escapeHtml(l.note)}</span>
+    </div>
+    `
+        : ""
+    }
+
+  </div>
+
+  <!-- ปุ่มแก้ไข / ลบ -->
+  <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 6px; flex-shrink: 0;">
+    <button
+      type="button"
+      onclick="editLog('${logId}')"
+      title="แก้ไขรายการนี้"
+      style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 15px; line-height: 1; color: var(--text-muted);"
+    >✎</button>
+    <button
+      type="button"
+      onclick="deleteLog('${logId}')"
+      title="ลบรายการนี้"
+      style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 15px; line-height: 1; color: var(--bad);"
+    >🗑</button>
   </div>
 </div>`;
       }
@@ -2246,7 +2295,102 @@
           return;
         }
         populateLogCarSelect();
-        onLogCarChange();
+
+        if (STATE.editingLogId) {
+          fillLogFormForEdit();
+        } else {
+          resetLogForm();
+          document.getElementById("logViewTitle").textContent =
+            "บันทึกการเติมน้ำมัน";
+          document.getElementById("submitLogText").textContent =
+            "บันทึกการเติมน้ำมัน";
+          document.getElementById("deleteLogBtn").style.display = "none";
+          onLogCarChange();
+        }
+      }
+
+      // เติมข้อมูลเดิมของรายการที่กำลังแก้ไขลงในฟอร์ม
+      function fillLogFormForEdit() {
+        const log = STATE.logs.find(
+          (l) => String(l.id) === String(STATE.editingLogId),
+        );
+        if (!log) {
+          // หารายการไม่เจอ (เช่นข้อมูลเพิ่งถูกลบไปจากที่อื่น) กลับไปโหมดเพิ่มรายการ
+          STATE.editingLogId = null;
+          prepareLogForm();
+          return;
+        }
+
+        document.getElementById("logCarSelect").value = log.carId;
+        populateFuelSelects();
+        document.getElementById("logDate").value = (log.date || "").slice(
+          0,
+          10,
+        );
+        document.getElementById("logFuelType").value = log.fuelType || "";
+        document.getElementById("logPricePerLiter").value =
+          log.pricePerLiter || "";
+        document.getElementById("logTotalCost").value = log.totalCost || "";
+        document.getElementById("logLiters").value = log.liters || "";
+        document.getElementById("logOdometer").value = log.odometer || "";
+        document.getElementById("logIsFull").checked =
+          String(log.isFullTank).toUpperCase() === "TRUE" ||
+          log.isFullTank === true;
+        document.getElementById("logNote").value = log.note || "";
+
+        const carLogs = STATE.logs.filter((l) => l.carId === log.carId);
+        const idx = carLogs.findIndex(
+          (l) => String(l.id) === String(STATE.editingLogId),
+        );
+        const prev = idx > 0 ? carLogs[idx - 1] : null;
+        document.getElementById("prevOdoHint").textContent = prev
+          ? `ครั้งก่อน: ${fmt(prev.odometer)} กม. (${formatDate(prev.date)})`
+          : "ยังไม่มีประวัติ";
+
+        document.getElementById("logViewTitle").textContent =
+          "แก้ไขรายการเติมน้ำมัน";
+        document.getElementById("submitLogText").textContent =
+          "บันทึกการแก้ไข";
+        document.getElementById("deleteLogBtn").style.display = "";
+      }
+
+      // ยกเลิกการเพิ่ม/แก้ไข แล้วกลับไปหน้าหลัก
+      function cancelLogForm() {
+        STATE.editingLogId = null;
+        openView("home");
+      }
+
+      // เรียกจากปุ่มแก้ไข (✎) ที่รายการในหน้าหลัก
+      function editLog(id) {
+        if (!id) {
+          toast("ไม่พบรหัสรายการนี้ ไม่สามารถแก้ไขได้");
+          return;
+        }
+        STATE.editingLogId = id;
+        openView("log");
+      }
+
+      // เรียกจากปุ่มลบ (🗑) ทั้งจากรายการในหน้าหลัก และจากในฟอร์มแก้ไข
+      async function deleteLog(id) {
+        if (!id) {
+          toast("ไม่พบรหัสรายการนี้ ไม่สามารถลบได้");
+          return;
+        }
+        if (!confirm("ต้องการลบรายการเติมน้ำมันนี้ใช่ไหม? ไม่สามารถกู้คืนได้")) return;
+        try {
+          await apiPost("deleteFuelLog", { id });
+          toast("ลบรายการเรียบร้อย");
+          const wasEditingThis = String(STATE.editingLogId) === String(id);
+          if (wasEditingThis) STATE.editingLogId = null;
+          STATE.logs = await apiGet("getFuelLogs", {
+            carId: STATE.activeCarId,
+          });
+          populateMainMonthDropdown();
+          renderHome();
+          if (wasEditingThis) openView("home");
+        } catch (err) {
+          toast("ลบไม่สำเร็จ: " + err.message);
+        }
       }
 
       function onLogCarChange() {
@@ -2323,6 +2467,7 @@
         const carId = document.getElementById("logCarSelect").value;
         const fuelType = document.getElementById("logFuelType").value;
         const fuelInfo = findOilInfo(fuelType);
+        const isEditing = !!STATE.editingLogId;
         const payload = {
           carId,
           date: document.getElementById("logDate").value,
@@ -2337,6 +2482,8 @@
           isFullTank: document.getElementById("logIsFull").checked,
           note: document.getElementById("logNote").value.trim(),
         };
+        if (isEditing) payload.id = STATE.editingLogId;
+
         if (!payload.odometer) {
           toast("กรุณากรอกเลขไมล์");
           return;
@@ -2353,21 +2500,33 @@
         const overlay = document.getElementById("fuelOverlay");
         overlay.style.display = "flex"; // แสดง Animation
         try {
-          await apiPost("addFuelLog", payload);
+          if (isEditing) {
+            await apiPost("updateFuelLog", payload);
+          } else {
+            await apiPost("addFuelLog", payload);
+          }
           STATE.activeCarId = carId;
           localStorage.setItem("ff_active_car", carId);
           STATE.logs = await apiGet("getFuelLogs", { carId });
-          renderHome();
+          populateMainMonthDropdown();
           renderCarChip();
-          showFillResult();
-          resetLogForm();
+          if (isEditing) {
+            STATE.editingLogId = null;
+            renderHome();
+            toast("แก้ไขรายการเรียบร้อย");
+            openView("home");
+          } else {
+            renderHome();
+            showFillResult();
+            resetLogForm();
+          }
         } catch (err) {
           toast("บันทึกไม่สำเร็จ: " + err.message);
         } finally {
           overlay.style.display = "none";
           btn.disabled = false;
           document.getElementById("submitLogText").textContent =
-            "บันทึกการเติมน้ำมัน";
+            STATE.editingLogId ? "บันทึกการแก้ไข" : "บันทึกการเติมน้ำมัน";
         }
       }
 
