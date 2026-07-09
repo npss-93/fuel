@@ -8,7 +8,11 @@
     />
     <title>Full Fuel — บันทึกการเติมน้ำมัน</title>
     <meta name="theme-color" content="#12141A" />
-    <link rel="icon" type="image/png" href="https://pngimg.com/uploads/fuel/fuel_PNG1.png">
+    <link
+      rel="icon"
+      type="image/png"
+      href="https://pngimg.com/uploads/fuel/fuel_PNG1.png"
+    />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -828,7 +832,6 @@
 
         border-radius: 4px;
         margin-bottom: 2px;
-
       }
       .price-pill .pn {
         font-size: 10.5px;
@@ -1062,7 +1065,18 @@
           </div>
 
           <div class="section-title">
-            ราคาน้ำมันวันนี้
+            <div>
+              ราคาน้ำมันวันนี้
+              <span
+                id="oilRemark2"
+                style="
+                  font-size: 11px;
+                  font-weight: normal;
+                  color: var(--text-dim);
+                  margin-left: 4px;
+                "
+              ></span>
+            </div>
             <span class="link" id="oilDateLabel">อัปเดต...</span>
           </div>
           <div class="card" style="padding: 14px">
@@ -1945,6 +1959,28 @@
           "ณ " +
           (STATE.oilPrices.dateNow || "-") +
           (STATE.oilPrices._cached ? " (แคช)" : "");
+
+        const remark2El = document.getElementById("oilRemark2");
+        if (remark2El) {
+          remark2El.textContent = STATE.oilPrices.remark2
+            ? `(${STATE.oilPrices.remark2})`
+            : "";
+        }
+
+        let dateLabel = "เมื่อวาน";
+        if (STATE.oilPrices.dateNow && STATE.oilPrices.date) {
+          let [d1, m1, y1] = STATE.oilPrices.dateNow.split("/");
+          let [d2, m2, y2] = STATE.oilPrices.date.split("/");
+          let tNow = new Date(y1, m1 - 1, d1).getTime();
+          let tDate = new Date(y2, m2 - 1, d2).getTime();
+          let diffDays = Math.round((tNow - tDate) / (1000 * 60 * 60 * 24));
+
+          // ถ้าห่างมากกว่า 1 วัน ให้ใช้ format dd/mm/yy
+          if (diffDays !== 1) {
+            dateLabel = `${d2}/${m2}/${y2.slice(-2)}`;
+          }
+        }
+
         const wrap = document.getElementById("priceTicker");
         const list = STATE.oilPrices.list || [];
         if (!list.length) {
@@ -1956,16 +1992,18 @@
           .map((v) => {
             const diffCls = v.diff > 0 ? "up" : v.diff < 0 ? "down" : "flat";
             const diffIcon = v.diff > 0 ? "▲" : v.diff < 0 ? "▼" : "—";
+            const diffStr = v.diff > 0 ? `+${v.diff}` : `${v.diff}`;
             return `
-    <div class="price-pill">
-      ${v.icon ? `<img src="${v.icon}" alt="" loading="lazy" onerror="this.style.display='none'">` : ""}
-      <div class="pn">${escapeHtml(v.name)}</div>
-      <div class="pv">฿${fmt(v.priceToday)}</div>
-      <div class="pprev ${diffCls}">${diffIcon} เมื่อวาน ฿${fmt(v.priceYesterday)}</div>
-    </div>`;
+            <div class="price-pill">
+            ${v.icon ? `<img src="${v.icon}" alt="" loading="lazy" onerror="this.style.display='none'">` : ""}
+            <div class="pn">${escapeHtml(v.name)}</div>
+            <div class="pv">฿${fmt(v.priceToday)}</div>
+            <div class="pprev ${diffCls}">${diffIcon} ฿${fmt(v.priceYesterday)} (${diffStr})</div>
+            </div>`;
           })
           .join("");
         populateFuelSelects();
+        // <div class="pprev ${diffCls}">${diffIcon} ${dateLabel} ฿${fmt(v.priceYesterday)} (${diffStr})</div>
       }
 
       function populateFuelSelects() {
@@ -2121,16 +2159,28 @@
           l.kml != null
             ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}">${l.kml} กม./ล.</span>`
             : "";
-        const icon = l.fuelIcon
-          ? `<img src="${l.fuelIcon}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:12px;" onerror="this.style.display='none'">`
+
+        // ค้นหา iconLog ปัจจุบันจาก STATE.oilPrices
+        let displayIcon = l.fuelIcon;
+        if (STATE.oilPrices && STATE.oilPrices.list) {
+          const oilInfo = STATE.oilPrices.list.find(
+            (v) => v.name === l.fuelType,
+          );
+          if (oilInfo && oilInfo.iconLog) {
+            displayIcon = oilInfo.iconLog; // ใช้ iconLog แทนถ้ามีข้อมูล
+          }
+        }
+
+        const icon = displayIcon
+          ? `<img src="${displayIcon}" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:5px;" onerror="this.style.display='none'">`
           : "⛽";
         return `<div class="log-item">
-    <div class="log-ic">${icon}</div>
-    <div class="log-main">
-      <div class="l1"><span>${escapeHtml(l.fuelType || "")}</span><span class="log-cost">฿${fmt(l.totalCost)}</span></div>
-      <div class="l2"><span>${formatDate(l.date)}</span><span>${fmt(l.liters)} ล.</span>${l.distanceFromPrevious ? `<span>${fmt(l.distanceFromPrevious)} กม.</span>` : ""}${kmlPill}</div>
-    </div>
-  </div>`;
+            <div class="log-ic">${icon}</div>
+            <div class="log-main">
+            <div class="l1"><span>${escapeHtml(l.fuelType || "")}</span><span class="log-cost">฿${fmt(l.totalCost)}</span></div>
+            <div class="l2"><span>${formatDate(l.date)}</span><span>${fmt(l.liters)} ล.</span>${l.distanceFromPrevious ? `<span>${fmt(l.distanceFromPrevious)} กม.</span>` : ""}${kmlPill}</div>
+            </div>
+            </div>`;
       }
 
       // ---------------- Log form ----------------
