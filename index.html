@@ -323,11 +323,98 @@
         font-size: 24px;
         border: 4px solid var(--bg);
         cursor: pointer;
-        box-shadow: 0 8px 20px rgba(255, 122, 41, 0.45);
-        transition: transform 0.15s ease;
+        box-shadow: 0 0px 20px rgba(255, 122, 41, 0.45);
+        transition:
+          transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+          background 0.35s ease,
+          color 0.3s ease,
+          box-shadow 0.35s ease;
       }
       .nav-fab:active {
         transform: scale(0.9) rotate(90deg);
+      }
+      .nav-fab.is-open {
+        transform: rotate(135deg);
+        background: #ed5a5d;
+        background: radial-gradient(circle,rgba(237, 90, 93, 1) 0%, rgba(232, 81, 81, 1) 50%, rgba(252, 33, 33, 1) 100%);
+        color: var(--text);
+        box-shadow: 0 0px 20px rgba(230, 102, 102, 0.35);
+      }
+      .nav-fab.is-open:active {
+        transform: rotate(135deg) scale(0.9);
+      }
+      .bottom-nav-inner.nav-locked .nav-btn {
+        opacity: 0.35;
+        pointer-events: none;
+      }
+      body.log-sheet-open .bottom-nav {
+        z-index: 62;
+      }
+
+      /* ---------- Log sheet (add/edit fill — near-fullscreen LIFF-style) ---------- */
+      .log-sheet-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 55;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.25s ease;
+      }
+      .log-sheet-backdrop.open {
+        opacity: 1;
+        pointer-events: all;
+      }
+      #view-log.active {
+        display: block;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        top: 7vh;
+        z-index: 58;
+        max-width: 560px;
+        margin: 0 auto;
+        background: var(--bg);
+        border-radius: 26px 26px 0 0;
+        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
+        padding: 10px 18px calc(24px + var(--nav-h) + var(--safe-b));
+        overflow-y: auto;
+        animation: logSheetUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+      }
+      #view-log.active::before {
+        content: "";
+        display: block;
+        width: 38px;
+        height: 4px;
+        background: var(--border);
+        border-radius: 99px;
+        margin: 4px auto 14px;
+      }
+      @keyframes logSheetUp {
+        from {
+          transform: translateY(40px);
+          opacity: 0;
+        }
+        to {
+          transform: translateY(0);
+          opacity: 1;
+        }
+      }
+      #view-log.active.closing {
+        animation: logSheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards;
+        pointer-events: none;
+        z-index: 10;
+      }
+      @keyframes logSheetDown {
+        from {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateY(60px);
+          opacity: 0;
+        }
       }
 
       /* ---------- Gauge (signature element) ---------- */
@@ -387,6 +474,7 @@
 
       /* ---------- Fill log list ---------- */
       .log-item {
+        position: relative;
         display: flex;
         align-items: center;
         gap: 12px;
@@ -395,6 +483,104 @@
       }
       .log-item:last-child {
         border-bottom: none;
+      }
+      .log-item.log-item-deleting {
+        pointer-events: none;
+      }
+      .log-item.log-item-deleting > * {
+        visibility: hidden;
+      }
+      .log-item.log-item-deleting > .dust-particles {
+        visibility: visible;
+      }
+      .log-item.log-item-deleting::before {
+        content: "";
+        position: absolute;
+        inset: 6px 0;
+        border-radius: 12px;
+        background: linear-gradient(
+          90deg,
+          var(--surface-2) 25%,
+          var(--border) 37%,
+          var(--surface-2) 63%
+        );
+        background-size: 400% 100%;
+        animation: skeletonShimmer 1.2s ease-in-out infinite;
+      }
+      @keyframes skeletonShimmer {
+        0% {
+          background-position: 100% 50%;
+        }
+        100% {
+          background-position: 0 50%;
+        }
+      }
+      /* ---------- Delete: shatter-to-dust effect ---------- */
+      .log-item.log-item-shatter {
+        transition:
+          height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+          padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+          margin 0.28s cubic-bezier(0.4, 0, 0.2, 1),
+          border-color 0.28s ease;
+        overflow: hidden;
+      }
+      .log-item.log-item-shatter::before {
+        animation: shatterSkeleton 0.62s cubic-bezier(0.55, 0, 0.85, 0.35)
+          forwards !important;
+      }
+      @keyframes shatterSkeleton {
+        0% {
+          opacity: 1;
+          filter: blur(0px);
+          transform: scale(1);
+        }
+        12% {
+          opacity: 1;
+          filter: blur(0px);
+          transform: scale(1.015);
+        }
+        45% {
+          opacity: 0.55;
+          filter: blur(1.5px);
+          transform: scale(0.97);
+        }
+        100% {
+          opacity: 0;
+          filter: blur(6px);
+          transform: scale(0.85);
+        }
+      }
+      .dust-particles {
+        position: absolute;
+        inset: 0;
+        overflow: visible;
+        pointer-events: none;
+      }
+      .dust-particle {
+        position: absolute;
+        border-radius: 1.5px;
+        background: var(--text-dim);
+        opacity: 0.95;
+        animation: dustFly 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
+        will-change: transform, opacity;
+      }
+      .dust-particle.shard {
+        border-radius: 2.5px;
+        background: linear-gradient(135deg, var(--text-muted), var(--border));
+      }
+      @keyframes dustFly {
+        0% {
+          opacity: 0.95;
+          transform: translate(0, 0) scale(1) rotate(0deg);
+        }
+        25% {
+          opacity: 0.95;
+        }
+        100% {
+          opacity: 0;
+          transform: translate(var(--dx), var(--dy)) scale(0.15)
+            rotate(var(--rot));
+        }
       }
       .log-ic {
         width: 42px;
@@ -652,6 +838,100 @@
         font-size: 13px;
         width: auto;
       }
+      /* ---------- Circular progress button (submitLogBtn) ---------- */
+      .btn.btn-morph {
+        position: relative;
+        overflow: hidden;
+        transition:
+          width 0.38s cubic-bezier(0.65, 0, 0.35, 1),
+          border-radius 0.38s cubic-bezier(0.65, 0, 0.35, 1);
+      }
+      .btn.btn-morph.is-loading,
+      .btn.btn-morph.is-success {
+        width: 56px;
+        min-width: 56px;
+        height: 56px;
+        padding: 0;
+        border-radius: 50%;
+        margin: 0 auto;
+        cursor: not-allowed;
+        pointer-events: none;
+      }
+      .btn.btn-morph .btn-label-text {
+        transition:
+          opacity 0.15s ease,
+          transform 0.15s ease;
+      }
+      .btn.btn-morph.is-loading .btn-label-text,
+      .btn.btn-morph.is-success .btn-label-text {
+        opacity: 0;
+        transform: scale(0.5);
+        position: absolute;
+      }
+      .btn .btn-spinner {
+        display: none;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        border: 3px solid rgba(24, 16, 0, 0.25);
+        border-top-color: #181000;
+        animation: btnspin 0.7s linear infinite;
+        flex-shrink: 0;
+      }
+      .btn.btn-morph.is-loading .btn-spinner {
+        display: inline-block;
+        animation:
+          btnspin 0.7s linear infinite,
+          btnPop 0.25s ease;
+      }
+      .btn .btn-check {
+        display: none;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+      .btn .btn-check svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .btn .btn-check path {
+        fill: none;
+        stroke: #181000;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 20;
+        stroke-dashoffset: 20;
+      }
+      .btn.btn-morph.is-success .btn-check {
+        display: inline-block;
+        animation: btnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      .btn.btn-morph.is-success .btn-check path {
+        animation: btnCheckDraw 0.35s ease forwards 0.05s;
+      }
+      @keyframes btnspin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @keyframes btnPop {
+        0% {
+          transform: scale(0);
+        }
+        60% {
+          transform: scale(1.15);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      @keyframes btnCheckDraw {
+        to {
+          stroke-dashoffset: 0;
+        }
+      }
 
       .chip-select {
         display: flex;
@@ -770,6 +1050,19 @@
         to {
           transform: translateY(0);
           opacity: 1;
+        }
+      }
+      .sheet.closing {
+        animation: slideDown 0.22s ease forwards;
+      }
+      @keyframes slideDown {
+        from {
+          transform: translateY(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateY(30px);
+          opacity: 0;
         }
       }
       .sheet-handle {
@@ -974,42 +1267,57 @@
         color: white;
       }
 
-      .water {
+      .loading {
+        position: relative;
         width: 100px;
         height: 100px;
-        background-color: skyblue;
+        background: #2196f3;
         border-radius: 50%;
-        position: relative;
-        box-shadow:
-          inset 0 0 30px 0 rgba(0, 0, 0, 0.5),
-          0 4px 10px 0 rgba(0, 0, 0, 0.5);
+        box-shadow: inset 0 0 25px #000;
         overflow: hidden;
       }
-      .water:before,
-      .water:after {
+
+      .loading:before {
         content: "";
         position: absolute;
-        width: 100px;
-        height: 100px;
-        top: -50px;
-        background-color: #fff;
+        top: -150%;
+        left: -60%;
+        width: 200%;
+        height: 200%;
+        border-radius: 40%;
+        background: #111;
+        opacity: 0.5;
+        animation: animate 10s linear infinite;
       }
-      .water:before {
-        border-radius: 45%;
-        background: rgba(255, 255, 255, 0.7);
-        animation: wave 5s linear infinite;
-      }
-      .water:after {
-        border-radius: 30%;
-        background: rgba(255, 255, 255, 0.3);
-        animation: wave 5s linear infinite;
-      }
-      @keyframes wave {
+
+      @keyframes animate {
         0% {
-          transform: rotate(0);
+          transform: rotate(0deg);
         }
+
         100% {
           transform: rotate(360deg);
+        }
+      }
+      .loading:after {
+        content: "";
+        position: absolute;
+        top: -150%;
+        left: -60%;
+        width: 210%;
+        height: 200%;
+        border-radius: 40%;
+        background: #111;
+        opacity: 0.9;
+        animation: animate2 6s linear infinite;
+      }
+      @keyframes animate2 {
+        0% {
+          transform: rotate(360deg);
+        }
+
+        100% {
+          transform: rotate(0deg);
         }
       }
     </style>
@@ -1267,11 +1575,19 @@
             </div>
 
             <button
-              class="btn btn-primary"
+              class="btn btn-primary btn-morph"
               onclick="submitLog()"
               id="submitLogBtn"
             >
-              <span id="submitLogText">บันทึกการเติมน้ำมัน</span>
+              <span class="btn-spinner" id="submitLogSpinner"></span>
+              <span class="btn-check" id="submitLogCheck">
+                <svg viewBox="0 0 24 24">
+                  <path d="M5 13l4 4L19 7"></path>
+                </svg>
+              </span>
+              <span id="submitLogText" class="btn-label-text"
+                >บันทึกการเติมน้ำมัน</span
+              >
             </button>
             <button
               class="btn btn-outline"
@@ -1431,6 +1747,12 @@
       </main>
 
       <!-- ============ BOTTOM NAV ============ -->
+      <div
+        class="log-sheet-backdrop"
+        id="logSheetBackdrop"
+        onclick="closeLogSheet()"
+      ></div>
+
       <div class="bottom-nav">
         <div class="bottom-nav-inner">
           <button
@@ -1443,7 +1765,7 @@
           <button class="nav-btn" data-nav="cars" onclick="openView('cars')">
             <span class="ic">🚗</span>รถของฉัน
           </button>
-          <div class="nav-fab" onclick="openView('log')">＋</div>
+          <div class="nav-fab" id="navFab" onclick="toggleLogSheet()">＋</div>
           <button class="nav-btn" data-nav="stats" onclick="openView('stats')">
             <span class="ic">📊</span>สรุปผล
           </button>
@@ -1537,7 +1859,7 @@
         <div id="resultModalBody"></div>
         <button
           class="btn btn-primary"
-          onclick="closeResultModal()"
+          onclick="closeResultModal(); openView('home');"
           style="margin-top: 16px"
         >
           เสร็จสิ้น
@@ -1584,6 +1906,7 @@
         logPage: 1,
         mainMonth: new Date().toISOString().substring(0, 7),
         editingLogId: null,
+        logPreviousView: "home",
       };
 
       // ---------------- API ----------------
@@ -1636,8 +1959,6 @@
           return;
         }
         bootstrap(false);
-
-
       }
 
       // ดึงข้อมูลผ่าน CSV เร็วกว่าแบบเดิม 10 เท่า
@@ -1777,19 +2098,86 @@
 
       // ---------------- Navigation ----------------
       function openView(name) {
-        document
-          .querySelectorAll(".view")
-          .forEach((v) =>
-            v.classList.toggle("active", v.dataset.view === name),
-          );
-        document
-          .querySelectorAll(".nav-btn")
-          .forEach((b) => b.classList.toggle("active", b.dataset.nav === name));
-        // ออกจากหน้าฟอร์มโดยไม่กดยกเลิก ให้ถือว่ายกเลิกการแก้ไขไปด้วย
-        if (name !== "log") STATE.editingLogId = null;
-        if (name === "log") prepareLogForm();
-        if (name === "stats") renderStats();
-        window.scrollTo(0, 0);
+        const currentActive = document.querySelector(".view.active");
+        const currentName = currentActive ? currentActive.dataset.view : null;
+        if (name === "log" && currentName !== "log") {
+          STATE.logPreviousView = currentName || "home";
+        }
+
+        const applyView = () => {
+          document
+            .querySelectorAll(".view")
+            .forEach((v) => {
+              v.classList.toggle("active", v.dataset.view === name);
+              if (v.id === "view-log") v.classList.remove("closing");
+            });
+          document
+            .querySelectorAll(".nav-btn")
+            .forEach((b) =>
+              b.classList.toggle("active", b.dataset.nav === name),
+            );
+          // ออกจากหน้าฟอร์มโดยไม่กดยกเลิก ให้ถือว่ายกเลิกการแก้ไขไปด้วย
+          if (name !== "log") STATE.editingLogId = null;
+          if (name === "log") prepareLogForm();
+          if (name === "stats") renderStats();
+          setLogSheetOpen(name === "log");
+          window.scrollTo(0, 0);
+          logView.scrollTop = 0;
+        };
+
+        // ถ้ากำลังปิด "หน้าบันทึกการเติมน้ำมัน" (ชีทเลื่อนขึ้นมา) ให้เล่น
+        // แอนิเมชัน slide ลงก่อน แล้วค่อยสลับหน้าจริง ๆ
+        const logView = document.getElementById("view-log");
+        const isClosingLog =
+          currentName === "log" &&
+          name !== "log" &&
+          logView &&
+          logView.classList.contains("active");
+
+        // คืนค่าเป็น Promise เสมอ เพื่อให้โค้ดที่เรียกใช้ (เช่น popup บันทึกสำเร็จ)
+        // รอให้ชีทนี้ "ปิดเสร็จจริง ๆ" ก่อนค่อยเปิด popup ซ้อน ป้องกันเห็นภาพซ้อนกันแว๊บนึง
+        return new Promise((resolve) => {
+          if (isClosingLog) {
+            logView.classList.add("closing");
+            setLogSheetOpen(false);
+            setTimeout(() => {
+              applyView();
+              resolve();
+            }, 260);
+          } else {
+            applyView();
+            resolve();
+          }
+        });
+      }
+
+      // เปิด/ปิด "หน้าเพิ่มรายการ" แบบชีทเกือบเต็มจอ + หมุนไอคอน + ล็อกปุ่มเนวอื่น
+      function setLogSheetOpen(isOpen) {
+        document.body.classList.toggle("log-sheet-open", isOpen);
+        const backdrop = document.getElementById("logSheetBackdrop");
+        if (backdrop) backdrop.classList.toggle("open", isOpen);
+        const fab = document.getElementById("navFab");
+        if (fab) fab.classList.toggle("is-open", isOpen);
+        const navInner = document.querySelector(".bottom-nav-inner");
+        if (navInner) navInner.classList.toggle("nav-locked", isOpen);
+      }
+
+      // ปุ่ม ＋ / ✕ : ถ้าปิดอยู่ให้เปิดฟอร์ม ถ้าเปิดอยู่แล้วให้ปิด (กลับไปหน้าก่อนหน้า)
+      function toggleLogSheet() {
+        const isOpen = document
+          .getElementById("view-log")
+          .classList.contains("active");
+        if (isOpen) {
+          closeLogSheet();
+        } else {
+          openView("log");
+        }
+      }
+
+      // ปิดชีทเพิ่มรายการ แล้วกลับไปหน้าที่เปิดชีทนี้ขึ้นมา
+      function closeLogSheet() {
+        STATE.editingLogId = null;
+        openView(STATE.logPreviousView || "home");
       }
 
       // ---------------- Theme ----------------
@@ -1811,6 +2199,23 @@
           STATE.theme === "dark";
         localStorage.setItem("ff_theme", STATE.theme);
         if (STATE.costChart) renderStats();
+      }
+
+      // ปิด overlay/sheet (เช่น popup เพิ่มรถ, popup ผลลัพธ์หลังบันทึก) แบบ slide ลง
+      // ก่อนค่อยซ่อนจริง แทนที่จะหายวับไปทันที
+      function closeOverlay(overlayId) {
+        const overlay = document.getElementById(overlayId);
+        if (!overlay) return;
+        const sheet = overlay.querySelector(".sheet");
+        if (!sheet) {
+          overlay.classList.remove("open");
+          return;
+        }
+        sheet.classList.add("closing");
+        setTimeout(() => {
+          overlay.classList.remove("open");
+          sheet.classList.remove("closing");
+        }, 220);
       }
 
       // ---------------- Toast ----------------
@@ -1960,7 +2365,7 @@
         document.getElementById("carModalOverlay").classList.add("open");
       }
       function closeCarModal() {
-        document.getElementById("carModalOverlay").classList.remove("open");
+        closeOverlay("carModalOverlay");
       }
 
       async function saveCar() {
@@ -2188,7 +2593,7 @@
         // ปรับขนาดป้าย (Pill) ให้เล็กลง และลดความหนาของตัวอักษรไม่ให้เด่นเกินไป
         const kmlPill =
           l.kml != null
-            ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}" style="font-size: 11px; padding: 2px 6px; font-weight: normal;">${l.kml} กม./ลิตร</span>`
+            ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}" style="font-size: 10px; padding: 2px 6px; font-weight: blod;">${l.kml} กม./ลิตร</span>`
             : "";
 
         let displayIcon = l.fuelIcon;
@@ -2210,7 +2615,7 @@
         const logId = l.id != null ? String(l.id).replace(/'/g, "\\'") : "";
 
         return `
-<div class="log-item" style="align-items: center; padding: 12px 0;">
+<div class="log-item" data-log-id="${logId}" style="align-items: center; padding: 12px 0;">
   
   <!-- จัดไอคอนให้อยู่กึ่งกลางแนวตั้ง (Center) ด้วย Flexbox -->
   <div class="log-ic" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; flex-shrink: 0; margin-right: 12px;">
@@ -2226,9 +2631,9 @@
       <span style="font-weight: 600; color: var(--primary); font-size: 14px;">฿${fmt(l.totalCost)}</span>
     </div>
 
-    <!-- แถวที่ 2: วันที่ และ จำนวนลิตร -->
-    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); line-height: 1.2;">
-      <span>${formatDate(l.date)}</span>
+    <!-- แถวที่ 2: วันที่ + เลขไมล์ (odometer) และ จำนวนลิตร -->
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); line-height: 1.2;">
+      <span>${formatDate(l.date)}${l.odometer ? ` • ${fmt(l.odometer)} กม.` : ""}</span>
       <span>${fmt(l.liters)} ลิตร</span>
     </div>
 
@@ -2236,7 +2641,7 @@
     ${
       l.distanceFromPrevious || l.kml
         ? `
-    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--text-muted); margin-top: 2px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 2px;">
       <span style="opacity: 0.8;">ระยะทาง: ${l.distanceFromPrevious ? `${fmt(l.distanceFromPrevious)} กม.` : "-"}</span>
       ${kmlPill}
     </div>
@@ -2289,6 +2694,11 @@
       }
 
       function prepareLogForm() {
+        // รีเซ็ตปุ่มบันทึกให้กลับมาเป็นปุ่มปกติทุกครั้งที่เปิดหน้านี้ขึ้นมาใหม่
+        // (ค้างเป็นเครื่องหมายถูกไว้ตอนปิดหน้าไปแล้วเท่านั้น)
+        const submitBtn = document.getElementById("submitLogBtn");
+        if (submitBtn) submitBtn.classList.remove("is-loading", "is-success");
+
         if (!STATE.cars.length) {
           toast("กรุณาเพิ่มรถก่อนบันทึกการเติมน้ำมัน");
           openView("cars");
@@ -2349,15 +2759,13 @@
 
         document.getElementById("logViewTitle").textContent =
           "แก้ไขรายการเติมน้ำมัน";
-        document.getElementById("submitLogText").textContent =
-          "บันทึกการแก้ไข";
+        document.getElementById("submitLogText").textContent = "บันทึกการแก้ไข";
         document.getElementById("deleteLogBtn").style.display = "";
       }
 
       // ยกเลิกการเพิ่ม/แก้ไข แล้วกลับไปหน้าหลัก
       function cancelLogForm() {
-        STATE.editingLogId = null;
-        openView("home");
+        closeLogSheet();
       }
 
       // เรียกจากปุ่มแก้ไข (✎) ที่รายการในหน้าหลัก
@@ -2370,25 +2778,93 @@
         openView("log");
       }
 
+      // สร้างเศษผง/สะเก็ดกระจายทับแถวรายการ (ใช้ตอนลบสำเร็จ ให้ item แหลกสลาย)
+      function spawnDust(row) {
+        const box = document.createElement("div");
+        box.className = "dust-particles";
+        const count = 34;
+        for (let i = 0; i < count; i++) {
+          const isShard = i % 6 === 0; // แทรกสะเก็ดชิ้นใหญ่กว่าปนไปในฝุ่นละเอียด
+          const p = document.createElement("span");
+          p.className = "dust-particle" + (isShard ? " shard" : "");
+          const size = isShard ? 6 + Math.random() * 6 : 2 + Math.random() * 3.5;
+          p.style.width = size + "px";
+          p.style.height =
+            (isShard ? size * (0.4 + Math.random() * 0.5) : size) + "px";
+          p.style.left = Math.random() * 100 + "%";
+          p.style.top = Math.random() * 100 + "%";
+          const dx = (Math.random() - 0.5) * (isShard ? 90 : 170);
+          const dy = (isShard ? 35 : 20) + Math.random() * (isShard ? 65 : 110);
+          const rot = Math.random() * 540 - 270 + "deg";
+          p.style.setProperty("--dx", dx + "px");
+          p.style.setProperty("--dy", dy + "px");
+          p.style.setProperty("--rot", rot);
+          p.style.animationDuration =
+            (isShard ? 0.78 : 0.5 + Math.random() * 0.28) + "s";
+          p.style.animationDelay = Math.random() * 0.12 + "s";
+          box.appendChild(p);
+        }
+        row.appendChild(box);
+      }
+
+      // เล่นแอนิเมชัน "แหลกเป็นผง" บนแถว แล้วค่อยยุบขนาดแถวลงเนียน ๆ
+      // คืน Promise เมื่อเล่นจบทั้งหมด (เรียกใช้หลัง backend ยืนยันลบสำเร็จแล้วเท่านั้น)
+      function shatterRow(row) {
+        return new Promise((resolve) => {
+          const rect = row.getBoundingClientRect();
+          spawnDust(row);
+          row.classList.add("log-item-shatter");
+          // รอให้เอฟเฟกต์ฝุ่น/สะเก็ดเล่นจบก่อน (~650ms) แล้วค่อยยุบพื้นที่แถวลง
+          // เพื่อไม่ให้การ์ดกระโดดยุบฮวบทันทีหลัง toast ขึ้น
+          setTimeout(() => {
+            row.style.height = rect.height + "px";
+            row.style.paddingTop = "0px";
+            row.style.paddingBottom = "0px";
+            // บังคับ reflow ก่อนเปลี่ยนเป็น 0 เพื่อให้ transition เล่นจริง
+            row.offsetHeight;
+            row.style.height = "0px";
+            row.style.marginTop = "0px";
+            row.style.marginBottom = "0px";
+            row.style.borderBottomWidth = "0px";
+            setTimeout(resolve, 300);
+          }, 650);
+        });
+      }
+
       // เรียกจากปุ่มลบ (🗑) ทั้งจากรายการในหน้าหลัก และจากในฟอร์มแก้ไข
       async function deleteLog(id) {
         if (!id) {
           toast("ไม่พบรหัสรายการนี้ ไม่สามารถลบได้");
           return;
         }
-        if (!confirm("ต้องการลบรายการเติมน้ำมันนี้ใช่ไหม? ไม่สามารถกู้คืนได้")) return;
+        if (!confirm("ต้องการลบรายการเติมน้ำมันนี้ใช่ไหม? ไม่สามารถกู้คืนได้"))
+          return;
+        // แสดง skeleton ที่แถวรายการนี้ (อาจมีซ้ำในหลายรายการ เช่น หน้าหลัก/สรุปผล)
+        const rows = document.querySelectorAll(
+          `.log-item[data-log-id="${String(id).replace(/"/g, '\\"')}"]`,
+        );
+        rows.forEach((r) => r.classList.add("log-item-deleting"));
         try {
           await apiPost("deleteFuelLog", { id });
-          toast("ลบรายการเรียบร้อย");
           const wasEditingThis = String(STATE.editingLogId) === String(id);
           if (wasEditingThis) STATE.editingLogId = null;
+          // ให้ skeleton ของแถวที่ลบแหลกเป็นผงก่อน ค่อยรีเฟรชรายการ+แจ้งเตือน
+          await Promise.all(Array.from(rows).map((r) => shatterRow(r)));
+          toast("ลบรายการเรียบร้อย");
           STATE.logs = await apiGet("getFuelLogs", {
             carId: STATE.activeCarId,
           });
           populateMainMonthDropdown();
           renderHome();
-          if (wasEditingThis) openView("home");
+          
+          if (wasEditingThis) openView(STATE.logPreviousView || "home");
         } catch (err) {
+          rows.forEach((r) => {
+            r.classList.remove("log-item-deleting");
+            r.classList.remove("log-item-shatter");
+            const dust = r.querySelector(".dust-particles");
+            if (dust) dust.remove();
+          });
           toast("ลบไม่สำเร็จ: " + err.message);
         }
       }
@@ -2494,11 +2970,10 @@
         }
 
         const btn = document.getElementById("submitLogBtn");
+        const btnText = document.getElementById("submitLogText");
+        const wasEditing = isEditing;
         btn.disabled = true;
-        document.getElementById("submitLogText").innerHTML =
-          '<span class="spinner"></span>';
-        const overlay = document.getElementById("fuelOverlay");
-        overlay.style.display = "flex"; // แสดง Animation
+        btn.classList.add("is-loading");
         try {
           if (isEditing) {
             await apiPost("updateFuelLog", payload);
@@ -2510,23 +2985,34 @@
           STATE.logs = await apiGet("getFuelLogs", { carId });
           populateMainMonthDropdown();
           renderCarChip();
-          if (isEditing) {
+
+          // โชว์ปุ่มเป็นวงกลม ✓ ค้างไว้แบบนั้น ไม่ต้องเปลี่ยนกลับเป็นปุ่มเดิม
+          // จะถูกซ่อนไปพร้อมกับตอนที่หน้า "เพิ่มรายการ" ปิดตัวลงเอง
+          btn.classList.remove("is-loading");
+          btn.classList.add("is-success");
+          await new Promise((r) => setTimeout(r, 550)); // ให้เวลาเห็นเครื่องหมายถูกก่อนเริ่มปิดหน้า
+
+          if (wasEditing) {
             STATE.editingLogId = null;
             renderHome();
             toast("แก้ไขรายการเรียบร้อย");
-            openView("home");
+            openView(STATE.logPreviousView || "home");
           } else {
             renderHome();
-            showFillResult();
             resetLogForm();
+            // ต้องรอให้ชีทหน้าเพิ่มรายการ slide ลงปิดจริง ๆ ก่อน ค่อยเปิด popup
+            // บันทึกสำเร็จ ไม่งั้นสองชีทจะพยายามเปิดซ้อนกันจนเห็นหน้าเพิ่มรายการแว๊บนึง
+            await openView(STATE.logPreviousView || "home");
+            showFillResult();
           }
         } catch (err) {
+          btn.classList.remove("is-loading", "is-success");
           toast("บันทึกไม่สำเร็จ: " + err.message);
         } finally {
-          overlay.style.display = "none";
           btn.disabled = false;
-          document.getElementById("submitLogText").textContent =
-            STATE.editingLogId ? "บันทึกการแก้ไข" : "บันทึกการเติมน้ำมัน";
+          btnText.textContent = STATE.editingLogId
+            ? "บันทึกการแก้ไข"
+            : "บันทึกการเติมน้ำมัน";
         }
       }
 
@@ -2566,7 +3052,7 @@
         document.getElementById("resultModalOverlay").classList.add("open");
       }
       function closeResultModal() {
-        document.getElementById("resultModalOverlay").classList.remove("open");
+        closeOverlay("resultModalOverlay");
       }
 
       // ---------------- Stats ----------------
@@ -2794,74 +3280,93 @@
       }
 
       // 1. ฟังก์ชันสร้างรายชื่อเดือนใส่ดรอปดาวน์ของหน้าหลัก
-     function populateMainMonthDropdown() {
-  const select = document.getElementById("mainMonthFilter");
-  if (!select) return;
+      function populateMainMonthDropdown() {
+        const select = document.getElementById("mainMonthFilter");
+        if (!select) return;
 
-  const carLogs = STATE.logs.filter(l => l.carId === STATE.activeCarId);
-  const monthsMap = {};
+        const carLogs = STATE.logs.filter((l) => l.carId === STATE.activeCarId);
+        const monthsMap = {};
 
-  carLogs.forEach(l => {
-    // ข้อมูลใน Sheets คือ 2026-07-08 ให้ตัดแค่ 7 ตัวแรกจะได้ "2026-07"
-    if (l.date && l.date.length >= 7) {
-      const monthKey = l.date.substring(0, 7); 
-      monthsMap[monthKey] = true;
-    }
-  });
+        carLogs.forEach((l) => {
+          // ข้อมูลใน Sheets คือ 2026-07-08 ให้ตัดแค่ 7 ตัวแรกจะได้ "2026-07"
+          if (l.date && l.date.length >= 7) {
+            const monthKey = l.date.substring(0, 7);
+            monthsMap[monthKey] = true;
+          }
+        });
 
-  const sortedMonths = Object.keys(monthsMap).sort().reverse();
-  const thaiMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."];
+        const sortedMonths = Object.keys(monthsMap).sort().reverse();
+        const thaiMonths = [
+          "ม.ค.",
+          "ก.พ.",
+          "มี.ค.",
+          "เม.ย.",
+          "พ.ค.",
+          "มิ.ย.",
+          "ก.ค.",
+          "ส.ค.",
+          "ก.ย.",
+          "ต.ค.",
+          "พ.ย.",
+          "ธ.ค.",
+        ];
 
-  select.innerHTML = sortedMonths.map(m => {
-    const [yyyy, mm] = m.split('-'); // แยกปีและเดือนจาก "2026-07"
-    const name = thaiMonths[parseInt(mm) - 1];
-    const thaiYear = parseInt(yyyy) + 543;
-    return `<option value="${m}">${name} ${thaiYear}</option>`;
-  }).join('');
+        select.innerHTML = sortedMonths
+          .map((m) => {
+            const [yyyy, mm] = m.split("-"); // แยกปีและเดือนจาก "2026-07"
+            const name = thaiMonths[parseInt(mm) - 1];
+            const thaiYear = parseInt(yyyy) + 543;
+            return `<option value="${m}">${name} ${thaiYear}</option>`;
+          })
+          .join("");
 
-  if (sortedMonths.includes(STATE.mainMonth)) {
-    select.value = STATE.mainMonth;
-  } else if (sortedMonths.length > 0) {
-    STATE.mainMonth = sortedMonths[0];
-    select.value = STATE.mainMonth;
-  }
-}
+        if (sortedMonths.includes(STATE.mainMonth)) {
+          select.value = STATE.mainMonth;
+        } else if (sortedMonths.length > 0) {
+          STATE.mainMonth = sortedMonths[0];
+          select.value = STATE.mainMonth;
+        }
+      }
 
       // 2. ฟังก์ชันกรองและแสดงผลรายการประวัติบนหน้าหลัก
       // ใช้การ์ดเดียวกับ "รายการเติมน้ำมัน" (id="recentLogsCard") ที่มีอยู่แล้ว
       // แทนที่จะสร้างการ์ดใหม่ซ้ำซ้อน — การ์ดนี้คนละอันกับ id="allLogsCard" ที่อยู่
       // ในหน้า "สรุปผล" (ซึ่งโชว์ประวัติทั้งหมดแบบแบ่งหน้า ไม่เกี่ยวกับเดือนที่เลือก
       // ในหน้าหลัก)
-     function renderMainLogs() {
-  const container = document.getElementById("recentLogsCard");
-  if (!container) return;
+      function renderMainLogs() {
+        const container = document.getElementById("recentLogsCard");
+        if (!container) return;
 
-  const carLogs = STATE.logs.filter(l => l.carId === STATE.activeCarId);
+        const carLogs = STATE.logs.filter((l) => l.carId === STATE.activeCarId);
 
-  if (!carLogs.length) {
-    container.innerHTML =
-      '<div class="empty-state"><div class="em-ic">🛢️</div><div class="em-t">ยังไม่มีข้อมูล</div><div class="em-s">กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก</div></div>';
-    return;
-  }
+        if (!carLogs.length) {
+          container.innerHTML =
+            '<div class="empty-state"><div class="em-ic">🛢️</div><div class="em-t">ยังไม่มีข้อมูล</div><div class="em-s">กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก</div></div>';
+          return;
+        }
 
-  // กรองข้อมูลโดยเทียบกับ STATE.mainMonth ซึ่งเก็บค่าเป็น "YYYY-MM"
-  const filteredLogs = carLogs.filter(l => l.date && l.date.startsWith(STATE.mainMonth));
+        // กรองข้อมูลโดยเทียบกับ STATE.mainMonth ซึ่งเก็บค่าเป็น "YYYY-MM"
+        const filteredLogs = carLogs.filter(
+          (l) => l.date && l.date.startsWith(STATE.mainMonth),
+        );
 
-  if (!filteredLogs.length) {
-    container.innerHTML = '<div class="empty-state">ไม่มีประวัติในเดือนนี้</div>';
-    return;
-  }
+        if (!filteredLogs.length) {
+          container.innerHTML =
+            '<div class="empty-state">ไม่มีประวัติในเดือนนี้</div>';
+          return;
+        }
 
-  // เรียงลำดับจากใหม่ไปเก่า
-  container.innerHTML = [...filteredLogs].reverse().map(logRowHtml).join("");
-}
+        // เรียงลำดับจากใหม่ไปเก่า
+        container.innerHTML = [...filteredLogs]
+          .reverse()
+          .map(logRowHtml)
+          .join("");
+      }
 
       // 2.1 คำนวณสรุปยอด (ระยะทาง/ค่าน้ำมัน/จำนวนครั้ง/บาทต่อกม.) ของ "เดือนที่เลือก"
       // ใช้ STATE.mainMonth แทนเดือนปัจจุบันจริง ๆ เพื่อให้ตัวเลขเปลี่ยนตามดรอปดาวน์
       function updateHomeMonthSummary() {
-        const carLogs = STATE.logs.filter(
-          (l) => l.carId === STATE.activeCarId,
-        );
+        const carLogs = STATE.logs.filter((l) => l.carId === STATE.activeCarId);
         const monthLogs = carLogs.filter(
           (l) => l.date && l.date.startsWith(STATE.mainMonth),
         );
@@ -2890,10 +3395,5 @@
         updateHomeMonthSummary(); // สั่งอัปเดตยอดสรุปด้านบนให้ตรงกับเดือนที่เลือก
       }
     </script>
-    <!-- Loading Overlay -->
-    <div id="fuelOverlay" class="fuel-overlay" style="display: none">
-      <div class="water"></div>
-      <p>กำลังบันทึกน้ำมัน...</p>
-    </div>
   </body>
 </html>
