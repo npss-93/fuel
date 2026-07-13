@@ -77,7 +77,7 @@
         --bg: #12141a;
         --bg-elev: #181b23;
         --surface: #1d212b;
-        --surface-2: #242835;
+        --surface-2: #292e3b;
         --border: #2c3140;
         --text: #f3f1ea;
         --text-muted: #9299ac;
@@ -170,7 +170,7 @@
         align-items: center;
         justify-content: center;
         font-size: 19px;
-        box-shadow: 0 4px 14px rgba(255, 122, 41, 0.35);
+        box-shadow: 0 4px 20px color-mix(in srgb, var(--accent) 35%, transparent);
         flex-shrink: 0;
       }
       .brand-text .t1 {
@@ -300,7 +300,7 @@
         position: fixed;
         left: 0;
         right: 0;
-        bottom: 0;
+        bottom: 3px;
         z-index: 30;
         display: flex;
         justify-content: center;
@@ -309,7 +309,7 @@
       }
       .bottom-nav-inner {
         pointer-events: all;
-        max-width: 560px;
+        max-width: 460px;
         width: 100%;
         margin: 0 14px;
         height: var(--nav-h);
@@ -331,17 +331,19 @@
         align-items: center;
         gap: 3px;
         font-size: 10px;
-        font-weight: 600;
-        padding: 8px 10px;
+        font-weight: normal;
+        padding: 10px 10px;
         border-radius: 14px;
         cursor: pointer;
         transition: color 0.2s;
       }
       .nav-btn .ic {
-        font-size: 19px;
+        font-size: 18px;
       }
       .nav-btn.active {
         color: var(--accent);
+        font-weight: 900;
+        scale: 1.1;
       }
       .nav-fab {
         position: relative;
@@ -1110,7 +1112,7 @@
       .btn-primary {
         background: linear-gradient(135deg, var(--accent), var(--accent-2));
         color: #181000;
-        box-shadow: 0 8px 20px rgba(255, 122, 41, 0.3);
+        box-shadow: 0 3px 10px color-mix(in srgb, var(--accent) 50%, transparent);
       }
       .btn-ghost {
         background: var(--surface-2);
@@ -1139,7 +1141,8 @@
           border-radius 0.38s cubic-bezier(0.65, 0, 0.35, 1);
       }
       .btn.btn-morph.is-loading,
-      .btn.btn-morph.is-success {
+      .btn.btn-morph.is-success,
+      .btn.btn-morph.is-error {
         width: 56px;
         min-width: 56px;
         height: 56px;
@@ -1155,7 +1158,8 @@
           transform 0.15s ease;
       }
       .btn.btn-morph.is-loading .btn-label-text,
-      .btn.btn-morph.is-success .btn-label-text {
+      .btn.btn-morph.is-success .btn-label-text,
+      .btn.btn-morph.is-error .btn-label-text {
         opacity: 0;
         transform: scale(0.5);
         position: absolute;
@@ -1202,6 +1206,56 @@
       }
       .btn.btn-morph.is-success .btn-check path {
         animation: btnCheckDraw 0.35s ease forwards 0.05s;
+      }
+      .btn .btn-x {
+        display: none;
+        width: 24px;
+        height: 24px;
+        flex-shrink: 0;
+      }
+      .btn .btn-x svg {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      .btn .btn-x path {
+        fill: none;
+        stroke: #fff;
+        stroke-width: 3;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-dasharray: 20;
+        stroke-dashoffset: 20;
+      }
+      .btn.btn-morph.is-error {
+        background: var(--bad);
+      }
+      .btn.btn-morph.is-error .btn-x {
+        display: inline-block;
+        animation:
+          btnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+          btnShake 0.45s ease 0.28s;
+      }
+      .btn.btn-morph.is-error .btn-x path {
+        animation: btnCheckDraw 0.35s ease forwards 0.05s;
+      }
+      @keyframes btnShake {
+        0%,
+        100% {
+          transform: translateX(0);
+        }
+        20% {
+          transform: translateX(-4px);
+        }
+        40% {
+          transform: translateX(4px);
+        }
+        60% {
+          transform: translateX(-3px);
+        }
+        80% {
+          transform: translateX(3px);
+        }
       }
       @keyframes btnspin {
         to {
@@ -1946,6 +2000,11 @@
                   <path d="M5 13l4 4L19 7"></path>
                 </svg>
               </span>
+              <span class="btn-x" id="submitLogX">
+                <svg viewBox="0 0 24 24">
+                  <path d="M6 6l12 12M18 6L6 18"></path>
+                </svg>
+              </span>
               <span id="submitLogText" class="btn-label-text"
                 >บันทึกการเติมน้ำมัน</span
               >
@@ -2071,34 +2130,31 @@
             <div class="theme-swatch-grid" id="colorThemePicker"></div>
           </div>
 
-          <div class="section-title">การเชื่อมต่อ API</div>
+          <div class="section-title">การเชื่อมต่อ Google Sheet</div>
           <div class="card">
-            <div class="field" style="margin-bottom: 10px">
-              <label>Web App URL (Google Apps Script)</label>
-              <input
-                class="input"
-                type="text"
-                id="apiUrlInput"
-                placeholder="https://script.google.com/macros/s/.../exec"
-              />
-            </div>
-
-            <!-- ส่วนที่เพิ่มใหม่: ช่องกรอก Sheet ID -->
             <div class="field" style="margin-bottom: 14px">
-              <label>Google Sheet ID (เพื่อเปิดโหมดอ่านข้อมูลด่วน)</label>
+              <label>ลิงก์ Google Sheet ของคุณ</label>
               <input
                 class="input"
                 type="text"
                 id="sheetIdInput"
-                placeholder="Sheet ID"
+                placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit"
               />
+              <div style="margin-top: 6px; font-size:10px; color: var(--text-muted)">
+                วางลิงก์ชีต ระบบจะดึงเฉพาะ Sheet ID ไปใช้
+                และสร้างตารางที่จำเป็นให้อัตโนมัติ
+              </div>
             </div>
 
-            <button class="btn btn-outline" onclick="saveApiUrl()">
-              บันทึกข้อมูล
+            <button
+              class="btn btn-outline"
+              id="connectSheetBtn"
+              onclick="connectSheet()"
+            >
+              เชื่อมต่อ
             </button>
             <div class="hint" id="apiStatusHint">
-              ยังไม่ได้ทดสอบการเชื่อมต่อ
+              ยังไม่ได้เชื่อมต่อ Google Sheet
             </div>
           </div>
 
@@ -2231,11 +2287,23 @@
           </div>
         </div>
         <button
-          class="btn btn-primary"
+          class="btn btn-primary btn-morph"
           onclick="saveCar()"
+          id="saveCarBtn"
           style="margin-top: 6px"
         >
-          บันทึกรถ
+          <span class="btn-spinner" id="saveCarSpinner"></span>
+          <span class="btn-check" id="saveCarCheck">
+            <svg viewBox="0 0 24 24">
+              <path d="M5 13l4 4L19 7"></path>
+            </svg>
+          </span>
+          <span class="btn-x" id="saveCarX">
+            <svg viewBox="0 0 24 24">
+              <path d="M6 6l12 12M18 6L6 18"></path>
+            </svg>
+          </span>
+          <span id="saveCarText" class="btn-label-text">บันทึกรถ</span>
         </button>
         <button
           class="btn btn-danger"
@@ -2290,9 +2358,15 @@
         "#9FA9B2",
       ];
 
+      // ---------------- Config ----------------
+      // Web App URL ของ Google Apps Script (deploy แล้วนำมาวางตรงนี้ครั้งเดียว
+      // ผู้ใช้ทุกคนที่เปิดแอปนี้จะเรียก backend ตัวเดียวกัน แต่แยกฐานข้อมูล
+      // ด้วย Sheet ID ของตัวเองผ่านหน้าตั้งค่า จึงไม่ต้องให้ผู้ใช้กรอก URL นี้เอง
+      const API_URL =
+        "https://script.google.com/macros/s/AKfycbzNvfUpjNQe2Cb4r8sjZtepcHQL8CoBVQxNPTbXmhD0UaT7u-LO60xwNcKwUchpz5xPXg/exec";
+
       // ---------------- State ----------------
       let STATE = {
-        apiUrl: localStorage.getItem("ff_api_url") || "",
         sheetId: localStorage.getItem("ff_sheet_id") || "",
         theme: localStorage.getItem("ff_theme") || "dark",
         colorTheme: localStorage.getItem("ff_color_theme") || "orange",
@@ -2313,9 +2387,11 @@
 
       // ---------------- API ----------------
       async function apiGet(action, params) {
-        if (!STATE.apiUrl) throw new Error("NO_API_URL");
-        const url = new URL(STATE.apiUrl);
+        if (!STATE.sheetId)
+          throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
+        const url = new URL(API_URL);
         url.searchParams.set("action", action);
+        url.searchParams.set("sheetId", STATE.sheetId);
         Object.entries(params || {}).forEach(([k, v]) => {
           if (v !== undefined && v !== null) url.searchParams.set(k, v);
         });
@@ -2325,11 +2401,23 @@
         return json.data;
       }
       async function apiPost(action, payload) {
-        if (!STATE.apiUrl) throw new Error("NO_API_URL");
-        const res = await fetch(STATE.apiUrl, {
+        if (!STATE.sheetId)
+          throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
+        const res = await fetch(API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" }, // เลี่ยง CORS preflight
-          body: JSON.stringify({ action, payload }),
+          body: JSON.stringify({ action, sheetId: STATE.sheetId, payload }),
+        });
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || "API error");
+        return json.data;
+      }
+      // เรียกใช้ตอนยังไม่ได้บันทึก sheetId ลง STATE (เช่นตอนตรวจสอบ/สร้างตารางครั้งแรก)
+      async function apiPostRaw(action, sheetId, payload) {
+        const res = await fetch(API_URL, {
+          method: "POST",
+          headers: { "Content-Type": "text/plain;charset=utf-8" },
+          body: JSON.stringify({ action, sheetId, payload: payload || {} }),
         });
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "API error");
@@ -2347,19 +2435,18 @@
           STATE.theme === "dark";
         document.body.setAttribute("data-color-theme", STATE.colorTheme);
         renderColorThemePicker();
-        document.getElementById("apiUrlInput").value = STATE.apiUrl;
-        document.getElementById("sheetIdInput").value = STATE.sheetId;
+        document.getElementById("sheetIdInput").value = STATE.sheetId
+          ? `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/edit`
+          : "";
         document.getElementById("logDate").value = new Date()
           .toISOString()
           .slice(0, 10);
         renderIconPicker();
         renderColorPicker();
 
-        if (!STATE.apiUrl) {
+        if (!STATE.sheetId) {
           openView("settings");
-          toast(
-            'ตั้งค่า Web App URL ก่อนเริ่มใช้งาน ดูช่อง "การเชื่อมต่อ API"',
-          );
+          toast('เชื่อมต่อ Google Sheet ก่อนเริ่มใช้งาน ดูช่อง "การเชื่อมต่อ Google Sheet"');
           return;
         }
         bootstrap(false);
@@ -2717,33 +2804,68 @@
       }
 
       // ---------------- Settings ----------------
-      function saveApiUrl() {
-        // 1. ตรวจสอบก่อนว่ามีช่องกรอกข้อมูลอยู่ในหน้าเว็บหรือไม่
-        const apiInput = document.getElementById("apiUrlInput");
-        const sheetInput = document.getElementById("sheetIdInput");
+      // ดึง Sheet ID ออกจาก URL เต็ม เช่น
+      // https://docs.google.com/spreadsheets/d/1Oc_.../edit?usp=drive_link
+      // หรือถ้าผู้ใช้วางแค่ ID มาตรงๆ ก็รับได้เหมือนกัน
+      function extractSheetId(input) {
+        const fromUrl = input.match(/\/d\/([a-zA-Z0-9_-]{15,})/);
+        if (fromUrl) return fromUrl[1];
+        if (/^[a-zA-Z0-9_-]{15,}$/.test(input)) return input;
+        return null;
+      }
 
-        if (!apiInput || !sheetInput) {
+      async function connectSheet() {
+        const sheetInput = document.getElementById("sheetIdInput");
+        if (!sheetInput) {
           toast("เกิดข้อผิดพลาด: หาช่องกรอกข้อมูลไม่พบ กรุณาตรวจสอบโค้ด HTML");
           return;
         }
 
-        // 2. ดึงค่าออกมา
-        const v = apiInput.value.trim();
-        const s = sheetInput.value.trim();
-
-        if (!v || !s) {
-          toast("กรุณากรอก Web App URL และ Sheet ID ให้ครบถ้วน");
+        const raw = sheetInput.value.trim();
+        if (!raw) {
+          toast("กรุณาวางลิงก์ Google Sheet ก่อน");
           return;
         }
 
-        // 3. บันทึกและโหลดข้อมูล
-        STATE.apiUrl = v;
-        STATE.sheetId = s;
-        localStorage.setItem("ff_api_url", v);
-        localStorage.setItem("ff_sheet_id", s);
+        const id = extractSheetId(raw);
+        if (!id) {
+          toast("รูปแบบลิงก์ Google Sheet ไม่ถูกต้อง");
+          document.getElementById("apiStatusHint").textContent =
+            "⚠️ อ่านลิงก์ไม่ออก กรุณาตรวจสอบอีกครั้ง";
+          return;
+        }
 
-        toast("บันทึกข้อมูลแล้ว กำลังโหลดข้อมูลแบบด่วน...");
-        bootstrap(true);
+        const btn = document.getElementById("connectSheetBtn");
+        const hint = document.getElementById("apiStatusHint");
+        btn.disabled = true;
+        btn.textContent = "กำลังเชื่อมต่อ...";
+        hint.textContent = "⏳ กำลังตรวจสอบและสร้างตารางที่จำเป็น...";
+
+        try {
+          // สร้างชีต Cars/FuelLogs ให้พร้อมใช้งานก่อน ถ้าสำเร็จค่อยถือว่าเชื่อมต่อสำเร็จ
+          await apiPostRaw("setupSheets", id, {});
+
+          // เปลี่ยน Sheet ID ใหม่ ต้องล้างข้อมูล/สถานะของชีตเก่าทิ้ง กันข้อมูลปนกัน
+          const isNewSheet = STATE.sheetId !== id;
+          STATE.sheetId = id;
+          localStorage.setItem("ff_sheet_id", id);
+          if (isNewSheet) {
+            STATE.activeCarId = null;
+            localStorage.removeItem("ff_active_car");
+            STATE.cars = [];
+            STATE.logs = [];
+          }
+
+          hint.textContent = "✅ เชื่อมต่อสำเร็จ สร้างตารางพร้อมใช้งานแล้ว";
+          toast("เชื่อมต่อ Google Sheet สำเร็จ กำลังโหลดข้อมูล...");
+          await bootstrap(true);
+        } catch (err) {
+          hint.textContent = "⚠️ เชื่อมต่อไม่สำเร็จ: " + err.message;
+          toast("เชื่อมต่อไม่สำเร็จ: " + err.message);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "เชื่อมต่อ";
+        }
       }
 
       // ---------------- Car chip / switching ----------------
@@ -2823,6 +2945,10 @@
 
       function openCarModal(carId) {
         const isEdit = !!carId;
+        // รีเซ็ตปุ่มบันทึกให้กลับมาเป็นปุ่มปกติทุกครั้งที่เปิดหน้านี้ขึ้นมาใหม่
+        const saveBtn = document.getElementById("saveCarBtn");
+        if (saveBtn)
+          saveBtn.classList.remove("is-loading", "is-success", "is-error");
         document.getElementById("carModalTitle").textContent = isEdit
           ? "แก้ไขรถ"
           : "เพิ่มรถคันใหม่";
@@ -2873,22 +2999,37 @@
           toast("กรุณากรอกชื่อรถ");
           return;
         }
+
+        const btn = document.getElementById("saveCarBtn");
+        btn.disabled = true;
+        btn.classList.add("is-loading");
         try {
           if (id) {
             payload.id = id;
             await apiPost("updateCar", payload);
-            toast("บันทึกการแก้ไขแล้ว");
           } else {
             const r = await apiPost("addCar", payload);
             STATE.activeCarId = r.id;
             localStorage.setItem("ff_active_car", r.id);
-            toast("เพิ่มรถเรียบร้อย");
           }
+
+          // โชว์ปุ่มเป็นวงกลม ✓ ค้างไว้แบบนั้น จะถูกรีเซ็ตตอนเปิดโมดัลนี้ครั้งถัดไป
+          btn.classList.remove("is-loading");
+          btn.classList.add("is-success");
+          await new Promise((r) => setTimeout(r, 650)); // ให้เวลาเห็นเครื่องหมายถูกก่อนเริ่มปิดชีท
+
+          toast(id ? "บันทึกการแก้ไขแล้ว" : "เพิ่มรถเรียบร้อย");
           closeCarModal();
           await bootstrap(false);
           populateLogCarSelect();
         } catch (err) {
+          btn.classList.remove("is-loading", "is-success");
+          btn.classList.add("is-error");
           toast("เกิดข้อผิดพลาด: " + err.message);
+          await new Promise((r) => setTimeout(r, 3000)); // ให้เวลาเห็นเครื่องหมาย ✕ ก่อนคืนกลับเป็นปุ่มปกติ
+          btn.classList.remove("is-error");
+        } finally {
+          btn.disabled = false;
         }
       }
 
@@ -3276,7 +3417,8 @@
         // รีเซ็ตปุ่มบันทึกให้กลับมาเป็นปุ่มปกติทุกครั้งที่เปิดหน้านี้ขึ้นมาใหม่
         // (ค้างเป็นเครื่องหมายถูกไว้ตอนปิดหน้าไปแล้วเท่านั้น)
         const submitBtn = document.getElementById("submitLogBtn");
-        if (submitBtn) submitBtn.classList.remove("is-loading", "is-success");
+        if (submitBtn)
+          submitBtn.classList.remove("is-loading", "is-success", "is-error");
 
         if (!STATE.cars.length) {
           toast("กรุณาเพิ่มรถก่อนบันทึกการเติมน้ำมัน");
@@ -3586,7 +3728,10 @@
           }
         } catch (err) {
           btn.classList.remove("is-loading", "is-success");
+          btn.classList.add("is-error");
           toast("บันทึกไม่สำเร็จ: " + err.message);
+          await new Promise((r) => setTimeout(r, 900)); // ให้เวลาเห็นเครื่องหมาย ✕ ก่อนคืนกลับเป็นปุ่มปกติ
+          btn.classList.remove("is-error");
         } finally {
           btn.disabled = false;
           btnText.textContent = STATE.editingLogId
