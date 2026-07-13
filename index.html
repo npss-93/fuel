@@ -40,6 +40,39 @@
         --nav-h: 72px;
         --safe-b: env(safe-area-inset-bottom, 0px);
       }
+      /* ---- Color themes (accent) ---- */
+      [data-color-theme="orange"] {
+        --accent: #ff7a29;
+        --accent-2: #ffb020;
+      }
+      [data-color-theme="blue"] {
+        --accent: #4f8dff;
+        --accent-2: #5be3ff;
+      }
+      [data-color-theme="purple"] {
+        --accent: #9d6bff;
+        --accent-2: #d78bff;
+      }
+      [data-color-theme="green"] {
+        --accent: #22c07a;
+        --accent-2: #8ee06b;
+      }
+      [data-color-theme="pink"] {
+        --accent: #ff5c93;
+        --accent-2: #ff9ad1;
+      }
+      [data-color-theme="red"] {
+        --accent: #ef4444;
+        --accent-2: #ff8a5c;
+      }
+      [data-color-theme="teal"] {
+        --accent: #14b8a6;
+        --accent-2: #67e8f9;
+      }
+      [data-color-theme="yellow"] {
+        --accent: #eab308;
+        --accent-2: #fde047;
+      }
       [data-theme="dark"] {
         --bg: #12141a;
         --bg-elev: #181b23;
@@ -323,7 +356,7 @@
         color: #181000;
         border: 4px solid var(--bg);
         cursor: pointer;
-        box-shadow: 0 0px 20px rgba(255, 122, 41, 0.45);
+        box-shadow: 0 0px 10px var(--accent);
         transition:
           transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
           background 0.35s ease,
@@ -357,8 +390,8 @@
         transform: rotate(135deg);
         background: #ed5a5d;
         background: radial-gradient(circle,rgba(237, 90, 93, 1) 0%, rgba(232, 81, 81, 1) 50%, rgba(252, 33, 33, 1) 100%);
-        color: var(--text);
-        box-shadow: 0 0px 20px rgba(230, 102, 102, 0.35);
+        color: #f5f5f5;
+        box-shadow: 0 0px 10px rgba(230, 102, 102);
       }
       .nav-fab.is-open:active {
         transform: rotate(135deg) scale(0.9);
@@ -557,7 +590,7 @@
         gap: 10px;
       }
       .stat-box {
-        background: var(--surface-2);
+        background: var(--surface);
         border-radius: var(--radius-md);
         padding: 12px 14px;
       }
@@ -743,7 +776,7 @@
         color: var(--bad);
       }
       .pill.accent {
-        background: rgba(255, 122, 41, 0.15);
+        background: color-mix(in srgb, var(--accent) 15%, transparent);
         color: var(--accent);
       }
 
@@ -1213,6 +1246,49 @@
         color: #181000;
       }
 
+      /* ---------- Color theme picker (settings) ---------- */
+      .theme-swatch-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 12px;
+        margin-top: 4px;
+      }
+      .theme-swatch {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+        padding: 6px 4px;
+        border-radius: var(--radius-sm);
+        border: 1px solid transparent;
+        transition:
+          border-color 0.15s ease,
+          background 0.15s ease;
+      }
+      .theme-swatch .dot {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border: 2px solid var(--surface);
+        box-shadow: 0 0 0 1px var(--border);
+      }
+      .theme-swatch .lbl {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-muted);
+      }
+      .theme-swatch.active {
+        border-color: var(--border);
+        background: var(--surface-2);
+      }
+      .theme-swatch.active .dot {
+        box-shadow: 0 0 0 2px var(--accent);
+      }
+      .theme-swatch.active .lbl {
+        color: var(--text);
+      }
+
       /* ---------- Cars grid ---------- */
       .car-card {
         background: var(--surface);
@@ -1581,7 +1657,7 @@
       }
     </style>
   </head>
-  <body data-theme="dark">
+  <body data-theme="dark" data-color-theme="orange">
     <div id="app">
       <!-- ============ TOP BAR ============ -->
       <div class="topbar">
@@ -1987,6 +2063,14 @@
             </div>
           </div>
 
+          <div class="section-title">ธีมสี</div>
+          <div class="card">
+            <div class="ts" style="margin-bottom: 10px">
+              เลือกโทนสีหลักของแอป
+            </div>
+            <div class="theme-swatch-grid" id="colorThemePicker"></div>
+          </div>
+
           <div class="section-title">การเชื่อมต่อ API</div>
           <div class="card">
             <div class="field" style="margin-bottom: 10px">
@@ -2211,6 +2295,7 @@
         apiUrl: localStorage.getItem("ff_api_url") || "",
         sheetId: localStorage.getItem("ff_sheet_id") || "",
         theme: localStorage.getItem("ff_theme") || "dark",
+        colorTheme: localStorage.getItem("ff_color_theme") || "orange",
         cars: [],
         logs: [],
         oilPrices: null,
@@ -2260,6 +2345,8 @@
           STATE.theme === "dark" ? "🌙" : "☀️";
         document.getElementById("darkModeSwitch").checked =
           STATE.theme === "dark";
+        document.body.setAttribute("data-color-theme", STATE.colorTheme);
+        renderColorThemePicker();
         document.getElementById("apiUrlInput").value = STATE.apiUrl;
         document.getElementById("sheetIdInput").value = STATE.sheetId;
         document.getElementById("logDate").value = new Date()
@@ -2567,6 +2654,38 @@
         document.getElementById("darkModeSwitch").checked =
           STATE.theme === "dark";
         localStorage.setItem("ff_theme", STATE.theme);
+        if (STATE.costChart) renderStats();
+      }
+
+      // ---------------- Color theme (accent) ----------------
+      const COLOR_THEMES = [
+        { id: "orange", label: "ส้ม", c1: "#ff7a29", c2: "#ffb020" },
+        { id: "blue", label: "ฟ้า", c1: "#4f8dff", c2: "#5be3ff" },
+        { id: "purple", label: "ม่วง", c1: "#9d6bff", c2: "#d78bff" },
+        { id: "green", label: "เขียว", c1: "#22c07a", c2: "#8ee06b" },
+        { id: "pink", label: "ชมพู", c1: "#ff5c93", c2: "#ff9ad1" },
+        { id: "red", label: "แดง", c1: "#ef4444", c2: "#ff8a5c" },
+        { id: "teal", label: "เขียวฟ้า", c1: "#14b8a6", c2: "#67e8f9" },
+        { id: "yellow", label: "เหลือง", c1: "#eab308", c2: "#fde047" },
+      ];
+      function renderColorThemePicker() {
+        const el = document.getElementById("colorThemePicker");
+        if (!el) return;
+        el.innerHTML = COLOR_THEMES.map(
+          (t) => `<div class="theme-swatch ${t.id === STATE.colorTheme ? "active" : ""}" onclick="pickColorTheme('${t.id}')">
+              <div class="dot" style="background:linear-gradient(135deg, ${t.c1}, ${t.c2})"></div>
+              <div class="lbl">${t.label}</div>
+            </div>`,
+        ).join("");
+      }
+      function pickColorTheme(id) {
+        STATE.colorTheme = id;
+        applyColorTheme();
+      }
+      function applyColorTheme() {
+        document.body.setAttribute("data-color-theme", STATE.colorTheme);
+        localStorage.setItem("ff_color_theme", STATE.colorTheme);
+        renderColorThemePicker();
         if (STATE.costChart) renderStats();
       }
 
