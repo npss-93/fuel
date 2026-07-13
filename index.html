@@ -311,6 +311,7 @@
         color: var(--accent);
       }
       .nav-fab {
+        position: relative;
         width: 54px;
         height: 54px;
         border-radius: 50%;
@@ -320,7 +321,6 @@
         align-items: center;
         justify-content: center;
         color: #181000;
-        font-size: 24px;
         border: 4px solid var(--bg);
         cursor: pointer;
         box-shadow: 0 0px 20px rgba(255, 122, 41, 0.45);
@@ -329,6 +329,26 @@
           background 0.35s ease,
           color 0.3s ease,
           box-shadow 0.35s ease;
+      }
+      /* วาดเครื่องหมาย + ด้วย CSS แทนตัวอักษร ＋ เพื่อให้จุดศูนย์กลางแม่นยำ
+         ป้องกันอาการ "เบี้ยว" ตอนหมุน ซึ่งเกิดจากกล่องตัวอักษรของฟอนต์ที่ไม่ได้จัดกึ่งกลางสนิท */
+      .nav-fab::before,
+      .nav-fab::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        background: currentColor;
+        border-radius: 2px;
+        transform: translate(-50%, -50%);
+      }
+      .nav-fab::before {
+        width: 2.5px;
+        height: 20px;
+      }
+      .nav-fab::after {
+        width: 20px;
+        height: 2.5px;
       }
       .nav-fab:active {
         transform: scale(0.9) rotate(90deg);
@@ -442,6 +462,94 @@
         letter-spacing: 0.06em;
       }
 
+      /* ---------- Fuel tank level bar (attached to gauge card) ---------- */
+      .fuel-tank-divider {
+        height: 1px;
+        background: var(--border);
+        margin: 16px 0 14px;
+      }
+      .fuel-tank-row {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+      .fuel-tank-icon {
+        width: 42px;
+        height: 42px;
+        border-radius: 12px;
+        background: var(--surface-2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+      .fuel-tank-main {
+        flex: 1;
+        min-width: 0;
+      }
+      .fuel-tank-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 6px;
+      }
+      .fuel-tank-label {
+        font-size: 12px;
+        color: var(--text-muted);
+        font-weight: 600;
+      }
+      .fuel-tank-pct {
+        font-size: 16px;
+        font-weight: 700;
+      }
+      .fuel-tank-bar-bg {
+        position: relative;
+        height: 12px;
+        border-radius: 999px;
+        background: var(--surface-2);
+        overflow: hidden;
+        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
+      }
+      .fuel-tank-bar-fill {
+        position: relative;
+        height: 100%;
+        border-radius: 999px;
+        width: 0%;
+        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+        background: linear-gradient(90deg, var(--bad), var(--warn));
+      }
+      .fuel-tank-bar-fill.lvl-good {
+        background: linear-gradient(90deg, #17b193, var(--good));
+      }
+      .fuel-tank-bar-fill.lvl-warn {
+        background: linear-gradient(90deg, #ff9142, var(--warn));
+      }
+      .fuel-tank-bar-fill.lvl-bad {
+        background: linear-gradient(90deg, #d63e5c, var(--bad));
+      }
+      .fuel-tank-bar-fill::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          180deg,
+          rgba(255, 255, 255, 0.35),
+          rgba(255, 255, 255, 0) 55%
+        );
+      }
+      .fuel-tank-bottom {
+        display: flex;
+        justify-content: space-between;
+        font-size: 11px;
+        color: var(--text-dim);
+        margin-top: 6px;
+      }
+      .pill.warn {
+        background: rgba(255, 176, 32, 0.15);
+        color: var(--warn);
+      }
+
       /* ---------- Stat grid ---------- */
       .stat-grid {
         display: grid;
@@ -475,10 +583,7 @@
       /* ---------- Fill log list ---------- */
       .log-item {
         position: relative;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        padding: 12px 0;
+        padding: 14px 0;
         border-bottom: 1px solid var(--border);
       }
       .log-item:last-child {
@@ -640,6 +745,160 @@
       .pill.accent {
         background: rgba(255, 122, 41, 0.15);
         color: var(--accent);
+      }
+
+      /* ---------- Fill log card (redesigned, less cluttered) ---------- */
+      .log-card-head {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 10px;
+      }
+      .log-card-title {
+        flex: 1;
+        min-width: 0;
+      }
+      .log-card-title .fuel-name {
+        font-weight: 700;
+        font-size: 15px;
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+      .log-card-title .fuel-date {
+        font-size: 12px;
+        color: var(--text-muted);
+        margin-top: 3px;
+      }
+      .log-card-cost {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 15px;
+        color: var(--accent);
+        white-space: nowrap;
+        text-align: right;
+        flex-shrink: 0;
+      }
+      .log-card-cost small {
+        font-size: 11px;
+        font-weight: 500;
+        color: var(--text-muted);
+      }
+      .log-card-actions {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex-shrink: 0;
+      }
+      .log-card-actions button {
+        background: none;
+        border: none;
+        cursor: pointer;
+        padding: 4px;
+        font-size: 16px;
+        line-height: 1;
+      }
+
+      /* ---------- Expand / collapse toggle for the detail grid ---------- */
+      .log-card-toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        padding: 8px 12px;
+        border-radius: var(--radius-md);
+        background: var(--surface-2);
+        font-size: 11.5px;
+        color: var(--text-muted);
+        transition: background 0.15s ease;
+        user-select: none;
+      }
+      .log-card-toggle:active {
+        background: var(--border);
+      }
+      .log-card-toggle .lct-preview {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        min-width: 0;
+      }
+      .log-card-toggle .lct-chev-group {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+        color: var(--text-dim);
+      }
+      .log-card-toggle .lct-label::before {
+        content: "ดูรายละเอียด";
+      }
+      .log-item.expanded .log-card-toggle .lct-label::before {
+        content: "ซ่อนรายละเอียด";
+      }
+      .log-card-toggle .lct-chev {
+        display: inline-block;
+        transition: transform 0.2s ease;
+      }
+      .log-item.expanded .log-card-toggle .lct-chev {
+        transform: rotate(180deg);
+      }
+
+      .log-card-details {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows 0.25s ease;
+      }
+      .log-card-details > div {
+        overflow: hidden;
+      }
+      .log-item.expanded .log-card-details {
+        grid-template-rows: 1fr;
+      }
+
+      .log-card-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 14px;
+        background: var(--surface-2);
+        border-radius: var(--radius-md);
+        padding: 12px 14px;
+        margin-top: 10px;
+      }
+      .log-card-grid .lg-item {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        min-width: 0;
+      }
+      .log-card-grid .lg-k {
+        font-size: 10.5px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        font-weight: 600;
+      }
+      .log-card-grid .lg-v {
+        font-family: var(--font-mono);
+        font-weight: 700;
+        font-size: 13.5px;
+        overflow-wrap: break-word;
+      }
+      .log-card-grid .lg-v.accent {
+        color: var(--accent);
+      }
+      .log-card-level {
+        margin-top: 8px;
+      }
+      .log-card-note {
+        margin-top: 10px;
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        gap: 6px;
+        align-items: flex-start;
+        opacity: 0.9;
       }
 
       .empty-state {
@@ -1363,6 +1622,32 @@
                 ยังไม่มีข้อมูลเปรียบเทียบ
               </div>
             </div>
+
+            <div
+              class="fuel-tank-divider"
+              id="fuelTankDivider"
+              style="display: none"
+            ></div>
+            <div class="fuel-tank-row" id="fuelTankRow" style="display: none">
+              <div class="fuel-tank-icon">⛽</div>
+              <div class="fuel-tank-main">
+                <div class="fuel-tank-top">
+                  <span class="fuel-tank-label">น้ำมันคงเหลือ (ก่อนเติมล่าสุด)</span>
+                  <span class="fuel-tank-pct mono" id="fuelPctText">--%</span>
+                </div>
+                <div class="fuel-tank-bar-bg">
+                  <div
+                    class="fuel-tank-bar-fill"
+                    id="fuelBarFill"
+                    style="width: 0%"
+                  ></div>
+                </div>
+                <div class="fuel-tank-bottom">
+                  <span id="fuelLitersText">เหลือ -- ลิตร</span>
+                  <span id="fuelTankSizeText">จากถัง -- ลิตร</span>
+                </div>
+              </div>
+            </div>
           </div>
 
           <!-- ดรอปดาวน์เลือกเดือน เฉพาะหน้าหลักเท่านั้น -->
@@ -1672,6 +1957,13 @@
           <div class="section-title">อัตราสิ้นเปลือง (กม./ลิตร)</div>
           <div class="card"><canvas id="kmlChart" height="180"></canvas></div>
 
+          <div class="section-title" id="fuelLevelChartTitle" style="display: none">
+            ระดับน้ำมันก่อนเติมแต่ละรอบ (ย้อนหลัง)
+          </div>
+          <div class="card" id="fuelLevelChartCard" style="display: none">
+            <canvas id="fuelLevelChart" height="180"></canvas>
+          </div>
+
           <div class="section-title">ประวัติการเติม</div>
           <div class="card" id="allLogsCard"></div>
         </section>
@@ -1765,7 +2057,14 @@
           <button class="nav-btn" data-nav="cars" onclick="openView('cars')">
             <span class="ic">🚗</span>รถของฉัน
           </button>
-          <div class="nav-fab" style="text-align: center;"  id="navFab" onclick="toggleLogSheet()">＋</div>
+          <div
+            class="nav-fab"
+            id="navFab"
+            onclick="toggleLogSheet()"
+            role="button"
+            tabindex="0"
+            aria-label="เพิ่มรายการเติมน้ำมัน"
+          ></div>
           <button class="nav-btn" data-nav="stats" onclick="openView('stats')">
             <span class="ic">📊</span>สรุปผล
           </button>
@@ -1829,6 +2128,23 @@
         <div class="field">
           <label>ชนิดน้ำมันหลัก</label>
           <select class="input" id="carFuelType"></select>
+        </div>
+        <div class="field">
+          <label>ความจุถังน้ำมัน</label>
+          <div class="input-group">
+            <input
+              class="input mono-input"
+              type="number"
+              step="0.1"
+              min="0"
+              id="carTankSize"
+              placeholder="เช่น 45"
+            />
+            <span class="suffix">ลิตร</span>
+          </div>
+          <div class="hint">
+            ใช้คำนวณปริมาณน้ำมันคงเหลือ (ลิตร/%) หลังเติมแต่ละรอบ ให้แม่นยำขึ้น
+          </div>
         </div>
         <button
           class="btn btn-primary"
@@ -1903,6 +2219,7 @@
         statsPeriod: "month",
         costChart: null,
         kmlChart: null,
+        fuelLevelChart: null,
         logPage: 1,
         mainMonth: new Date().toISOString().substring(0, 7),
         editingLogId: null,
@@ -1987,23 +2304,29 @@
       }
 
       // ย้ายตรรกะการคำนวณ กม./ลิตร มาประมวลผลทันทีบนมือถือ
-      function enrichLogs(logs) {
+      // tankSize: ความจุถังของรถคันที่ active (ลิตร) — ใช้ประมาณน้ำมันคงเหลือ "ก่อน" เติมแต่ละรอบ
+      function enrichLogs(logs, tankSize) {
+        tankSize = Number(tankSize) || 0;
         logs.sort(
           (a, b) =>
             new Date(a.date) - new Date(b.date) ||
             Number(a.odometer) - Number(b.odometer),
         );
         let lastFullIdx = -1;
+        let levelAfterPrev = null; // ลิตรคงเหลือ "หลัง" เหตุการณ์ก่อนหน้า (ฐานอ้างอิงของรอบถัดไป)
+        let lastKml = null; // อัตราสิ้นเปลืองล่าสุดที่รู้ ใช้ประมาณรอบที่ยังไม่มี kml ของตัวเอง (เติมไม่เต็มถัง)
         for (let i = 0; i < logs.length; i++) {
           const cur = logs[i];
           cur.distanceFromPrevious = null;
           cur.kml = null;
           cur.costPerKm = null;
+          cur.economyCost = null;
           if (i > 0) {
             const dist = Number(cur.odometer) - Number(logs[i - 1].odometer);
             cur.distanceFromPrevious = dist > 0 ? dist : null;
           }
-          if (String(cur.isFullTank).toUpperCase() === "TRUE") {
+          const isFull = String(cur.isFullTank).toUpperCase() === "TRUE";
+          if (isFull) {
             if (lastFullIdx >= 0) {
               const distance =
                 Number(cur.odometer) - Number(logs[lastFullIdx].odometer);
@@ -2017,10 +2340,53 @@
                 cur.kml = round2(distance / liters);
                 cur.costPerKm = round2(cost / distance);
                 cur.economyDistance = distance;
+                cur.economyLiters = round2(liters);
+                cur.economyCost = round2(cost); // เงินที่ใช้ไปกับน้ำมันตั้งแต่เติมเต็มถังครั้งก่อน
               }
             }
             lastFullIdx = i;
           }
+
+          // --- ระดับน้ำมัน "ก่อน" เติมรอบนี้ — เหมือนหลักการของ kml คือเอาข้อมูล
+          //     "รอบที่ผ่านมา" มาสรุปในรอบปัจจุบัน ไม่ใช่ค่าหลังเติมที่จะเป็น 100% เสมอ
+          let levelBefore = null;
+          if (levelAfterPrev != null) {
+            if (cur.distanceFromPrevious) {
+              const estKml = cur.kml || lastKml;
+              levelBefore = estKml
+                ? Math.max(
+                    0,
+                    levelAfterPrev - cur.distanceFromPrevious / estKml,
+                  )
+                : levelAfterPrev;
+            } else {
+              levelBefore = levelAfterPrev;
+            }
+          }
+
+          if (tankSize > 0 && levelBefore != null) {
+            cur.remainingLiters = round2(levelBefore);
+            cur.remainingPercent = round2(
+              Math.min(100, (levelBefore / tankSize) * 100),
+            );
+          } else {
+            cur.remainingLiters = null;
+            cur.remainingPercent = null;
+          }
+
+          // --- อัปเดตฐานอ้างอิงสำหรับรอบถัดไป (ระดับน้ำมัน "หลัง" เติมรอบนี้เสร็จ) ---
+          let levelAfter = null;
+          if (levelBefore != null) {
+            levelAfter = levelBefore + (Number(cur.liters) || 0);
+          } else if (isFull) {
+            levelAfter = Number(cur.liters) || 0;
+          }
+          if (isFull && tankSize > 0) levelAfter = tankSize;
+          if (tankSize > 0 && levelAfter != null)
+            levelAfter = Math.min(levelAfter, tankSize);
+
+          levelAfterPrev = levelAfter;
+          if (cur.kml) lastKml = cur.kml;
         }
         return logs;
       }
@@ -2070,7 +2436,10 @@
           let carLogs = rawLogs.filter(
             (l) => String(l.carId) === String(STATE.activeCarId),
           );
-          STATE.logs = enrichLogs(carLogs);
+          const activeCar = STATE.cars.find(
+            (c) => c.id === STATE.activeCarId,
+          );
+          STATE.logs = enrichLogs(carLogs, activeCar && activeCar.tankSize);
 
           populateMainMonthDropdown();
 
@@ -2300,7 +2669,7 @@
       <div class="car-avatar" style="background:${c.color || "#FF7A29"}33;">${c.icon || "🚗"}</div>
       <div class="car-info">
         <div class="cn">${escapeHtml(c.name)}</div>
-        <div class="cm">${escapeHtml(c.brand || "")} ${escapeHtml(c.model || "")} · ${escapeHtml(c.fuelType || "")}</div>
+        <div class="cm">${escapeHtml(c.brand || "")} ${escapeHtml(c.model || "")} · ${escapeHtml(c.fuelType || "")}${c.tankSize ? ` · ถัง ${fmt(c.tankSize)} ล.` : ""}</div>
       </div>
       <button class="car-edit" onclick="event.stopPropagation();openCarModal('${c.id}')">⋯</button>
     </div>`,
@@ -2350,6 +2719,7 @@
           document.getElementById("carModel").value = c.model || "";
           if (c.fuelType)
             document.getElementById("carFuelType").value = c.fuelType;
+          document.getElementById("carTankSize").value = c.tankSize || "";
           pickedIcon = c.icon || CAR_ICONS[0];
           pickedColor = c.color || CAR_COLORS[0];
         } else {
@@ -2357,6 +2727,7 @@
           document.getElementById("carName").value = "";
           document.getElementById("carBrand").value = "";
           document.getElementById("carModel").value = "";
+          document.getElementById("carTankSize").value = "";
           pickedIcon = CAR_ICONS[STATE.cars.length % CAR_ICONS.length];
           pickedColor = CAR_COLORS[STATE.cars.length % CAR_COLORS.length];
         }
@@ -2375,6 +2746,7 @@
           brand: document.getElementById("carBrand").value.trim(),
           model: document.getElementById("carModel").value.trim(),
           fuelType: document.getElementById("carFuelType").value,
+          tankSize: Number(document.getElementById("carTankSize").value) || 0,
           icon: pickedIcon,
           color: pickedColor,
         };
@@ -2569,7 +2941,7 @@
           220,
         );
         document.getElementById("gaugeValue").textContent =
-          latestKml != null ? latestKml.toFixed(1) : "--";
+          latestKml != null ? fmt(latestKml) : "--";
 
         if (recentWithEconomy.length >= 2) {
           const cur = recentWithEconomy[recentWithEconomy.length - 1];
@@ -2588,6 +2960,9 @@
             : "เลือกหรือเพิ่มรถก่อน";
         }
 
+        // ---- แถบน้ำมันคงเหลือ (ลิตร + %) ----
+        renderFuelTankBar(car, logs);
+
         // สรุปยอดของ "เดือนที่เลือก" จากดรอปดาวน์ (STATE.mainMonth)
         updateHomeMonthSummary();
 
@@ -2598,13 +2973,59 @@
         renderMainLogs();
       }
 
-      function logRowHtml(l) {
-        // ปรับขนาดป้าย (Pill) ให้เล็กลง และลดความหนาของตัวอักษรไม่ให้เด่นเกินไป
-        const kmlPill =
-          l.kml != null
-            ? `<span class="pill ${l.kml >= 12 ? "good" : l.kml < 8 ? "bad" : "accent"}" style="font-size: 10px; padding: 2px 6px; font-weight: bold;">${l.kml} กม./ลิตร</span>`
-            : "";
+      function renderFuelTankBar(car, logs) {
+        const divider = document.getElementById("fuelTankDivider");
+        const row = document.getElementById("fuelTankRow");
+        const tankSize = car ? Number(car.tankSize) || 0 : 0;
 
+        if (!tankSize) {
+          // ไม่มีข้อมูลความจุถัง — ซ่อนแถบนี้ไป และชวนไปตั้งค่าเพิ่ม
+          divider.style.display = "none";
+          row.style.display = "none";
+          return;
+        }
+
+        const withLevel = logs.filter((l) => l.remainingPercent != null);
+        const latest = withLevel.length
+          ? withLevel[withLevel.length - 1]
+          : null;
+
+        divider.style.display = "block";
+        row.style.display = "flex";
+
+        const fill = document.getElementById("fuelBarFill");
+        const pctText = document.getElementById("fuelPctText");
+        const litersText = document.getElementById("fuelLitersText");
+        const sizeText = document.getElementById("fuelTankSizeText");
+
+        sizeText.textContent = `จากถัง ${fmt(tankSize)} ลิตร`;
+
+        if (!latest) {
+          fill.style.width = "0%";
+          fill.className = "fuel-tank-bar-fill";
+          pctText.textContent = "--%";
+          litersText.textContent = "เติมเต็มถังสักครั้ง แล้วบันทึกรอบถัดไปเพื่อเริ่มติดตาม";
+          return;
+        }
+
+        const pct = Math.max(0, Math.min(100, latest.remainingPercent));
+        fill.style.width = pct + "%";
+        fill.className =
+          "fuel-tank-bar-fill " +
+          (pct <= 15 ? "lvl-bad" : pct <= 40 ? "lvl-warn" : "lvl-good");
+        pctText.textContent = fmt(pct) + "%";
+        const kmlNote =
+          latest.kml != null ? ` · เฉลี่ย ${fmt(latest.kml)} กม./ล.` : "";
+        litersText.textContent = `เหลือ ${fmt(latest.remainingLiters)} ลิตร${kmlNote}`;
+      }
+
+      // ปุ่ม "ดูรายละเอียด" ในแต่ละรายการเติมน้ำมัน — ขยาย/ย่อ ตารางข้อมูลเฉพาะรายการนั้น
+      function toggleLogDetails(toggleEl) {
+        const row = toggleEl.closest(".log-item");
+        if (row) row.classList.toggle("expanded");
+      }
+
+      function logRowHtml(l) {
         let displayIcon = l.fuelIcon;
         if (STATE.oilPrices && STATE.oilPrices.list) {
           const oilInfo = STATE.oilPrices.list.find(
@@ -2614,79 +3035,109 @@
             displayIcon = oilInfo.iconLog;
           }
         }
-
-        // ปรับสไตล์รูปภาพไม่ให้ล้น และจัดกึ่งกลาง
         const icon = displayIcon
           ? `<img src="${displayIcon}" alt="" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:8px;" onerror="this.style.display='none'">`
           : "⛽";
 
         // รหัสรายการ ใช้อ้างอิงตอนแก้ไข/ลบ (ต้องมาจาก backend เป็น l.id)
         const logId = l.id != null ? String(l.id).replace(/'/g, "\\'") : "";
+        const isFull = String(l.isFullTank).toUpperCase() === "TRUE";
+
+        // สีของอัตราสิ้นเปลือง ใช้เกณฑ์เดียวกับส่วนอื่นในแอป
+        // (มากกว่าเท่ากับ 12 กม./ลิตร ถือว่าดี, น้อยกว่า 8 กม./ลิตร ถือว่าแย่)
+        const kmlColor =
+          l.kml == null
+            ? "var(--text-muted)"
+            : l.kml >= 12
+              ? "var(--good)"
+              : l.kml < 8
+                ? "var(--bad)"
+                : "var(--accent)";
+
+        const fuelLevelBadge =
+          l.remainingPercent != null
+            ? `<div class="log-card-level">
+        <span class="pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}">
+          🛢️ น้ำมันคงเหลือก่อนเติมครั้งนี้ ${fmt(l.remainingLiters)} ลิตร (${fmt(l.remainingPercent)}%)
+        </span>
+      </div>`
+            : "";
+
+        // แถบสรุปย่อ ๆ ให้เห็นวันที่แบบเต็มโดยไม่ต้องกดขยาย
+        const previewHtml = l.date
+          ? formatDateFull(l.date)
+          : "แตะเพื่อดูรายละเอียด";
 
         return `
-<div class="log-item" data-log-id="${logId}" style="align-items: center; padding: 12px 0;">
-  
-  <!-- จัดไอคอนให้อยู่กึ่งกลางแนวตั้ง (Center) ด้วย Flexbox -->
-  <div class="log-ic" style="display: flex; justify-content: center; align-items: center; width: 40px; height: 40px; flex-shrink: 0; margin-right: 12px;">
-    ${icon}
+<div class="log-item" data-log-id="${logId}">
+
+  <div class="log-card-head">
+    <div class="log-ic">${icon}</div>
+    <div class="log-card-title">
+      <div class="fuel-name">
+        ${escapeHtml(l.fuelType || "ไม่ระบุชนิดน้ำมัน")}
+        ${isFull ? '<span class="pill accent">เติมเต็มถัง</span>' : `<span class="pill accent">เติม ${fmt(l.liters)} ลิตร</span>`}
+      </div>
+     
+    </div>
+    <div class="log-card-cost">
+      ${fmt(l.totalCost)}
+      <br>
+      <small> บาท</small>
+    </div>
+    <div class="log-card-actions">
+      <button type="button" onclick="editLog('${logId}')" title="แก้ไขรายการนี้" style="color: var(--text-muted);">✎</button>
+      <button type="button" onclick="deleteLog('${logId}')" title="ลบรายการนี้" style="color: var(--bad);">🗑</button>
+    </div>
   </div>
-  
-  <!-- ลดช่องว่างระหว่างบรรทัด (gap) ให้ดูเป็นกลุ่มเดียวกันมากขึ้น -->
-  <div class="log-main" style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
-    
-    <!-- แถวที่ 1: ชนิดน้ำมัน และ ราคา -->
-    <div style="display: flex; justify-content: space-between; align-items: center; line-height: 1.2;">
-      <span style="font-weight: 600; color: var(--text); font-size: 14px;">${escapeHtml(l.fuelType || "ไม่ระบุ")}</span>
-      <span style="font-weight: 600; color: var(--primary); font-size: 14px;">฿${fmt(l.totalCost)}</span>
+
+  <div class="log-card-toggle" onclick="toggleLogDetails(this)">
+    <span class="lct-preview">${previewHtml}</span>
+    <span class="lct-chev-group">
+      <span class="lct-label"></span>
+      <span class="lct-chev">▾</span>
+    </span>
+  </div>
+
+  <div class="log-card-details"><div>
+
+    <div class="log-card-grid">
+      <div class="lg-item">
+        <span class="lg-k">เลขไมล์</span>
+        <span class="lg-v">${l.odometer ? fmt(l.odometer) + " กม." : "ไม่มีข้อมูล"}</span>
+      </div>
+      <div class="lg-item">
+        <span class="lg-k">ระยะทางที่ขับมา</span>
+        <span class="lg-v">${l.distanceFromPrevious ? fmt(l.distanceFromPrevious) + " กม." : "ไม่มีข้อมูล"}</span>
+      </div>
+      <div class="lg-item">
+        <span class="lg-k">ปริมาณน้ำมันที่เติม</span>
+        <span class="lg-v">${fmt(l.liters)} ลิตร</span>
+      </div>
+      <div class="lg-item">
+        <span class="lg-k">ราคาต่อลิตร</span>
+        <span class="lg-v">${l.pricePerLiter ? fmt(l.pricePerLiter) + " บาท" : "ไม่มีข้อมูล"}</span>
+      </div>
+      <div class="lg-item">
+        <span class="lg-k">อัตราสิ้นเปลืองรอบนี้</span>
+        <span class="lg-v" style="color:${kmlColor}">${l.kml != null ? fmt(l.kml) + " กม./ลิตร" : "ยังไม่ทราบ"}</span>
+      </div>
+      <div class="lg-item">
+        <span class="lg-k">บาทต่อกิโลเมตรรอบนี้</span>
+        <span class="lg-v">${l.costPerKm != null ? fmt(l.costPerKm) + " บาท" : "ยังไม่ทราบ"}</span>
+      </div>
     </div>
 
-    <!-- แถวที่ 2: วันที่ + เลขไมล์ (odometer) และ จำนวนลิตร -->
-    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); line-height: 1.2;">
-      <span>${formatDate(l.date)}${l.odometer ? ` • ${fmt(l.odometer)} กม.` : ""}</span>
-      <span>${fmt(l.liters)} ลิตร</span>
-    </div>
+    ${fuelLevelBadge}
 
-    <!-- แถวที่ 3: ระยะทาง และ กม./ลิตร (เอาเส้นประออก ลดความเข้มลงให้ดูสมดุล) -->
-    ${
-      l.distanceFromPrevious || l.kml
-        ? `
-    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 2px;">
-      <span style="opacity: 0.8;">ระยะทาง: ${l.distanceFromPrevious ? `${fmt(l.distanceFromPrevious)} กม.` : "-"}</span>
-      ${kmlPill}
-    </div>
-    `
-        : ""
-    }
-
-    <!-- แถวที่ 4: โน้ต (ถ้ามี) -->
     ${
       l.note
-        ? `
-    <div style="display: flex; align-items: flex-start; gap: 4px; font-size: 12px; color: var(--text-muted); margin-top: 2px; opacity: 0.85;">
-      <span>📝</span>
-      <span style="word-break: break-word;">${escapeHtml(l.note)}</span>
-    </div>
-    `
+        ? `<div class="log-card-note"><span>📝</span><span style="word-break: break-word;">${escapeHtml(l.note)}</span></div>`
         : ""
     }
 
-  </div>
+  </div></div>
 
-  <!-- ปุ่มแก้ไข / ลบ -->
-  <div style="display: flex; flex-direction: column; gap: 4px; margin-left: 6px; flex-shrink: 0;">
-    <button
-      type="button"
-      onclick="editLog('${logId}')"
-      title="แก้ไขรายการนี้"
-      style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 15px; line-height: 1; color: var(--text-muted);"
-    >✎</button>
-    <button
-      type="button"
-      onclick="deleteLog('${logId}')"
-      title="ลบรายการนี้"
-      style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 15px; line-height: 1; color: var(--bad);"
-    >🗑</button>
-  </div>
 </div>`;
       }
 
@@ -3038,8 +3489,26 @@
       function showFillResult() {
         const withEconomy = STATE.logs.filter((l) => l.kml != null);
         const body = document.getElementById("resultModalBody");
+        const lastLog = STATE.logs.length
+          ? STATE.logs[STATE.logs.length - 1]
+          : null;
+        const fuelLevelHtml =
+          lastLog && lastLog.remainingPercent != null
+            ? `<div class="divider"></div>
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--text-muted);">
+          🛢️ น้ำมันที่เหลือก่อนเติมรอบนี้:
+          <b style="color:${lastLog.remainingPercent <= 15 ? "var(--bad)" : lastLog.remainingPercent <= 40 ? "var(--warn)" : "var(--good)"}">${fmt(lastLog.remainingLiters)} ล. (${fmt(lastLog.remainingPercent)}%)</b>
+        </div>`
+            : "";
+        const tripCostHtml =
+          lastLog && lastLog.economyCost != null
+            ? `<div style="text-align:center;font-size:12px;color:var(--text-dim);margin-top:4px;">
+          ใช้น้ำมันไปเป็นเงิน ~฿${fmt(lastLog.economyCost)} ตั้งแต่เติมเต็มถังครั้งก่อน
+        </div>`
+            : "";
+
         if (!withEconomy.length) {
-          body.innerHTML = `<div class="hint">บันทึกเรียบร้อย! เติมเต็มถังอีกครั้งเพื่อดูอัตราสิ้นเปลืองของคุณ</div>`;
+          body.innerHTML = `<div class="hint">บันทึกเรียบร้อย! เติมเต็มถังอีกครั้งเพื่อดูอัตราสิ้นเปลืองของคุณ</div>${fuelLevelHtml}${tripCostHtml}`;
         } else {
           const cur = withEconomy[withEconomy.length - 1];
           const prev =
@@ -3056,7 +3525,7 @@
         เทียบครั้งก่อน (${prev.kml} กม./ล.): <b style="color:${cur.kml >= prev.kml ? "var(--good)" : "var(--bad)"}">${cur.kml >= prev.kml ? "+" : ""}${round2(cur.kml - prev.kml)} กม./ล.</b>
       </div>`
           : ""
-      }`;
+      }${fuelLevelHtml}${tripCostHtml}`;
         }
         document.getElementById("resultModalOverlay").classList.add("open");
       }
@@ -3207,6 +3676,68 @@
               },
             },
           });
+
+          // ---- กราฟระดับน้ำมันคงเหลือย้อนหลัง (ต่อรอบเติม ไม่ผูกกับ period) ----
+          const levelTitle = document.getElementById("fuelLevelChartTitle");
+          const levelCard = document.getElementById("fuelLevelChartCard");
+          const levelLogs = logs
+            .filter((l) => l.remainingPercent != null)
+            .slice(-20); // เอาแค่ 20 รอบล่าสุดกันกราฟรก
+
+          if (levelLogs.length >= 2) {
+            levelTitle.style.display = "flex";
+            levelCard.style.display = "block";
+            const levelLabels = levelLogs.map((l) => formatDate(l.date));
+            const levelPct = levelLogs.map((l) => l.remainingPercent);
+            const levelLiters = levelLogs.map((l) => l.remainingLiters);
+
+            if (STATE.fuelLevelChart) STATE.fuelLevelChart.destroy();
+            STATE.fuelLevelChart = new Chart(
+              document.getElementById("fuelLevelChart"),
+              {
+                type: "line",
+                data: {
+                  labels: levelLabels,
+                  datasets: [
+                    {
+                      label: "น้ำมันก่อนเติม (%)",
+                      data: levelPct,
+                      borderColor: "#FFB020",
+                      backgroundColor: "rgba(255,176,32,.15)",
+                      fill: true,
+                      tension: 0.3,
+                      pointRadius: 3,
+                      pointBackgroundColor: "#FFB020",
+                      yAxisID: "y",
+                    },
+                  ],
+                },
+                options: {
+                  plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                      callbacks: {
+                        afterLabel: (ctx) =>
+                          `≈ ${fmt(levelLiters[ctx.dataIndex])} ลิตร`,
+                      },
+                    },
+                  },
+                  scales: {
+                    x: { grid: { display: false } },
+                    y: {
+                      min: 0,
+                      max: 100,
+                      grid: { color: gridColor },
+                      ticks: { callback: (v) => v + "%" },
+                    },
+                  },
+                },
+              },
+            );
+          } else {
+            levelTitle.style.display = "none";
+            levelCard.style.display = "none";
+          }
         }
 
         // --- ระบบแบ่งหน้าประวัติการเติม (Pagination) ---
@@ -3267,6 +3798,16 @@
           day: "numeric",
           month: "short",
           year: "2-digit",
+        });
+      }
+      // วันที่แบบเต็ม (ชื่อวัน + วันที่ + ชื่อเดือนเต็ม + ปี พ.ศ.) ใช้โชว์ในแถบสรุปย่อของแต่ละรายการ
+      function formatDateFull(d) {
+        const dt = new Date(d);
+        return dt.toLocaleDateString("th-TH", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
         });
       }
       function escapeHtml(s) {
