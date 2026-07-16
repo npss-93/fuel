@@ -2530,13 +2530,20 @@
         );
         let lastFullIdx = -1;
         let levelAfterPrev = null; // ลิตรคงเหลือ "หลัง" เหตุการณ์ก่อนหน้า (ฐานอ้างอิงของรอบถัดไป)
-        let lastKml = null; // อัตราสิ้นเปลืองล่าสุดที่รู้ ใช้ประมาณรอบที่ยังไม่มี kml ของตัวเอง (เติมไม่เต็มถัง)
+        let lastKml = null; // อัตราสิ้นเปลืองล่าสุดที่ "วัดได้จริง" (จากรอบเติมเต็มถัง) ใช้ประมาณรอบที่ยังไม่มี kml ของตัวเอง (เติมไม่เต็มถัง)
+        let avgCost = null; // ต้นทุนถัวเฉลี่ยถ่วงน้ำหนัก (บาท/ลิตร) ของน้ำมันที่ "ผสมอยู่ในถัง" ณ ขณะนั้น
+        // — แก้ปัญหาราคาน้ำมันผันผวน: ถ้าน้ำมันเก่าค้างถังปนกับน้ำมันใหม่ที่ราคาต่างกัน
+        //   การเอาราคาที่เพิ่งเติมรอบนี้มาคิดตรง ๆ จะคลาดเคลื่อน จึงต้องถัวเฉลี่ยถ่วงน้ำหนัก
+        //   ตามปริมาณเหมือนวิธีตีมูลค่าสต๊อกสินค้าแบบ Weighted Average Cost
         for (let i = 0; i < logs.length; i++) {
           const cur = logs[i];
           cur.distanceFromPrevious = null;
           cur.kml = null;
+          cur.kmlEstimated = false; // true = ประมาณจากอัตราสิ้นเปลืองล่าสุดที่วัดได้จริง ไม่ใช่ค่าที่วัดได้เป๊ะของรอบนี้
           cur.costPerKm = null;
+          cur.costPerKmEstimated = false; // true = ประมาณจากต้นทุนถัวเฉลี่ย ไม่ใช่ค่าที่กระทบยอดแบบเต็มถัง-ต่อ-เต็มถัง
           cur.economyCost = null;
+          cur.avgFuelCostBefore = avgCost; // ต้นทุนถัวเฉลี่ยของน้ำมันในถัง "ก่อน" เติมรอบนี้ (เก็บไว้ใช้ตอนย้อนคำนวณทีหลัง)
           if (i > 0) {
             const dist = Number(cur.odometer) - Number(logs[i - 1].odometer);
             cur.distanceFromPrevious = dist > 0 ? dist : null;
@@ -2553,11 +2560,36 @@
                 cost += Number(logs[j].totalCost) || 0;
               }
               if (distance > 0 && liters > 0) {
+                // ค่าที่ได้ตรงนี้คือค่า "จริง" ที่กระทบยอดแล้ว (เต็มถัง-ต่อ-เต็มถัง)
+                // แม่นยำกว่าค่าประมาณด้านล่างเสมอ แม้ราคาน้ำมันจะขึ้นลงกี่ครั้งก็ตาม
+                // เพราะปริมาณน้ำมันที่เติมรวมกันในช่วงนี้ = ปริมาณที่ใช้ไปจริงพอดี
                 cur.kml = round2(distance / liters);
                 cur.costPerKm = round2(cost / distance);
                 cur.economyDistance = distance;
                 cur.economyLiters = round2(liters);
                 cur.economyCost = round2(cost); // เงินที่ใช้ไปกับน้ำมันตั้งแต่เติมเต็มถังครั้งก่อน
+
+                // --- ย้อนกลับไปเติมค่าประมาณให้ทุกรอบ "เติมไม่เต็มถัง" ที่อยู่ในช่วงนี้ ---
+                // ตอนประมวลผลตามลำดับ (forward pass) ยังไม่รู้อัตราสิ้นเปลืองที่แท้จริง
+                // ของรอบนี้ล่วงหน้า รอบเติมไม่เต็มถังก่อนหน้าจึงอาจถูกปล่อยว่างไว้
+                // ("ยังไม่ทราบ") หรือได้แค่ค่าประมาณจากรอบเก่าที่อาจไม่ตรงแล้ว
+                // ตอนนี้รู้ค่าที่กระทบยอดแม่นยำของทั้งช่วงนี้แล้ว จึงย้อนกลับไปแทนที่
+                // ด้วยค่าประมาณที่ใกล้เคียงความจริงที่สุด (ใช้อัตรานี้ร่วมกับต้นทุน
+                // น้ำมันเฉลี่ยของแต่ละรอบเอง เพื่อให้ยังสะท้อนราคาที่ต่างกันของแต่ละรอบ)
+                for (let j = lastFullIdx + 1; j < i; j++) {
+                  const mid = logs[j];
+                  mid.kml = cur.kml;
+                  mid.kmlEstimated = true;
+                  const basisCost =
+                    mid.avgFuelCostBefore != null
+                      ? mid.avgFuelCostBefore
+                      : avgCost;
+                  mid.costPerKm =
+                    basisCost != null
+                      ? round2(basisCost / cur.kml)
+                      : cur.costPerKm;
+                  mid.costPerKmEstimated = true;
+                }
               }
             }
             lastFullIdx = i;
@@ -2565,10 +2597,10 @@
 
           // --- ระดับน้ำมัน "ก่อน" เติมรอบนี้ — เหมือนหลักการของ kml คือเอาข้อมูล
           //     "รอบที่ผ่านมา" มาสรุปในรอบปัจจุบัน ไม่ใช่ค่าหลังเติมที่จะเป็น 100% เสมอ
+          const estKml = cur.kml || lastKml;
           let levelBefore = null;
           if (levelAfterPrev != null) {
             if (cur.distanceFromPrevious) {
-              const estKml = cur.kml || lastKml;
               levelBefore = estKml
                 ? Math.max(
                     0,
@@ -2590,6 +2622,27 @@
             cur.remainingPercent = null;
           }
 
+          // --- มูลค่าน้ำมันคงเหลือ "ก่อน" เติมรอบนี้ ตีราคาตามต้นทุนถัวเฉลี่ย
+          //     ของน้ำมันที่ผสมกันอยู่ในถัง (avgCost ของรอบก่อนหน้า ยังไม่รวมของรอบนี้) ---
+          cur.remainingValue =
+            levelBefore != null && avgCost != null
+              ? round2(levelBefore * avgCost)
+              : null;
+
+          // --- ประมาณ กม./ลิตร และ บาท/กม. ของรอบนี้ แม้ยังไม่ได้เติมเต็มถัง ---
+          // ใช้ estKml (อัตราสิ้นเปลืองล่าสุดที่วัดได้จริง) คูณกับ avgCost (ต้นทุนถัวเฉลี่ย
+          // ของน้ำมันที่อยู่ในถังระหว่างการเดินทางรอบนี้) แทนการรอเติมเต็มถังก่อนถึงจะรู้ค่า
+          // และแม่นยำกว่าเอาราคาที่เพิ่งเติม "รอบนี้" มาคิดตรง ๆ เพราะน้ำมันที่ใช้ไปขับรอบนี้
+          // อาจเป็นน้ำมันเก่าที่ค้างถัง ซึ่งราคาต่างจากน้ำมันที่เพิ่งเติมก็ได้
+          if (cur.costPerKm == null && estKml && avgCost != null) {
+            cur.costPerKm = round2(avgCost / estKml);
+            cur.costPerKmEstimated = true;
+          }
+          if (cur.kml == null && estKml) {
+            cur.kml = round2(estKml);
+            cur.kmlEstimated = true;
+          }
+
           // --- อัปเดตฐานอ้างอิงสำหรับรอบถัดไป (ระดับน้ำมัน "หลัง" เติมรอบนี้เสร็จ) ---
           let levelAfter = null;
           if (levelBefore != null) {
@@ -2601,10 +2654,40 @@
           if (tankSize > 0 && levelAfter != null)
             levelAfter = Math.min(levelAfter, tankSize);
 
+          // --- อัปเดตต้นทุนถัวเฉลี่ยถ่วงน้ำหนักของน้ำมันในถัง "หลัง" เติมรอบนี้เสร็จ ---
+          // ต้นทุนใหม่ = (ลิตรเดิม×ต้นทุนเดิม + ลิตรที่เติม×ราคาที่เติม) / (ลิตรเดิม+ลิตรที่เติม)
+          const newLiters = Number(cur.liters) || 0;
+          const newPrice = Number(cur.pricePerLiter) || 0;
+          const baseLiters = levelBefore != null ? levelBefore : 0;
+          if (newLiters > 0 && newPrice > 0) {
+            if (avgCost == null || baseLiters <= 0) {
+              // ยังไม่มีฐานต้นทุนเดิม (รายการแรก หรือถังว่างสนิทก่อนเติม) ใช้ราคารอบนี้เป็นฐานตั้งต้น
+              avgCost = newPrice;
+            } else {
+              avgCost = round2(
+                (baseLiters * avgCost + newLiters * newPrice) /
+                  (baseLiters + newLiters),
+              );
+            }
+          }
+          cur.avgFuelCost = avgCost;
+
           levelAfterPrev = levelAfter;
-          if (cur.kml) lastKml = cur.kml;
+          // อัปเดตค่าอ้างอิงเฉพาะตอนที่เป็นค่าที่ "วัดได้จริง" (เต็มถัง-ต่อ-เต็มถัง)
+          // ไม่ใช่ค่าประมาณที่เพิ่งใส่ไปด้านบน กัน error สะสมจากการวนซ้ำค่าประมาณ
+          if (cur.kml && !cur.kmlEstimated) lastKml = cur.kml;
         }
         return logs;
+      }
+
+      // ดึงประวัติการเติมน้ำมันของรถคันที่ระบุจาก backend แล้ว "enrich" (คำนวณ
+      // กม./ลิตร, บาท/กม., ต้นทุนเฉลี่ยถ่วงน้ำหนัก ฯลฯ) ทันทีก่อนเก็บลง STATE.logs
+      // ต้องเรียกใช้ฟังก์ชันนี้แทนการ apiGet("getFuelLogs") ตรง ๆ ทุกครั้ง
+      // ไม่งั้นค่าคำนวณต่าง ๆ จะหายไปจนกว่าจะรีเฟรชหน้าใหม่ (bootstrap ทำงานอีกรอบ)
+      async function refreshLogs(carId) {
+        const rawLogs = await apiGet("getFuelLogs", { carId });
+        const car = STATE.cars.find((c) => c.id === carId);
+        STATE.logs = enrichLogs(rawLogs, car && car.tankSize);
       }
 
       // ฟังก์ชันโหลดราคาน้ำมันแบบแคชรายวัน
@@ -2929,7 +3012,7 @@
         localStorage.setItem("ff_active_car", carId);
         renderCarChip();
         renderCarsList();
-        STATE.logs = await apiGet("getFuelLogs", { carId });
+        await refreshLogs(carId);
         populateMainMonthDropdown();
         renderHome();
         openView("home");
@@ -3358,8 +3441,8 @@
         const fuelLevelBadge =
           l.remainingPercent != null
             ? `<div class="log-card-level">
-        <span class="pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}">
-          🛢️ น้ำมันคงเหลือก่อนเติมครั้งนี้ ${fmt(l.remainingLiters)} ลิตร (${fmt(l.remainingPercent)}%)
+        <span class=" pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}" style="font-size:9.5px">
+          🛢️ น้ำมันคงเหลือก่อนเติมครั้งนี้ ${fmt(l.remainingLiters)} ลิตร (${fmt(l.remainingPercent)}%)${l.remainingValue != null ? ` ≈ ${fmt(l.remainingValue)} บาท` : ""}
         </span>
       </div>`
             : "";
@@ -3433,13 +3516,25 @@
         <span class="lg-v">${l.pricePerLiter ? fmt(l.pricePerLiter) + " บาท" : "ไม่มีข้อมูล"}</span>
       </div>
       <div class="lg-item">
-        <span class="lg-k">อัตราสิ้นเปลืองรอบนี้</span>
-        <span class="lg-v" style="color:${kmlColor}">${l.kml != null ? fmt(l.kml) + " กม./ลิตร" : "ยังไม่ทราบ"}</span>
+        <span class="lg-k">อัตราสิ้นเปลืองรอบนี้${l.kmlEstimated ? " (ประมาณ)" : ""}</span>
+        <span class="lg-v" style="color:${kmlColor}">${l.kml != null ? (l.kmlEstimated ? "≈ " : "") + fmt(l.kml) + " กม./ลิตร" : "ยังไม่ทราบ"}</span>
       </div>
       <div class="lg-item">
-        <span class="lg-k">บาทต่อกิโลเมตรรอบนี้</span>
-        <span class="lg-v">${l.costPerKm != null ? fmt(l.costPerKm) + " บาท" : "ยังไม่ทราบ"}</span>
+        <span class="lg-k">บาทต่อกิโลเมตรรอบนี้${l.costPerKmEstimated ? " (ประมาณ)" : ""}</span>
+        <span class="lg-v">${l.costPerKm != null ? (l.costPerKmEstimated ? "≈ " : "") + fmt(l.costPerKm) + " บาท" : "ยังไม่ทราบ"}</span>
       </div>
+      <div class="lg-item">
+        <span class="lg-k">ต้นทุนเฉลี่ยน้ำมันในถังตอนนี้</span>
+        <span class="lg-v">${l.avgFuelCost != null ? fmt(l.avgFuelCost) + " บาท/ลิตร" : "ยังไม่ทราบ"}</span>
+      </div>
+      ${
+        l.remainingValue != null
+          ? `<div class="lg-item">
+        <span class="lg-k">มูลค่าน้ำมันคงเหลือก่อนเติม</span>
+        <span class="lg-v">${fmt(l.remainingValue)} บาท</span>
+      </div>`
+          : ""
+      }
     </div>
 
     ${fuelLevelBadge}
@@ -3628,9 +3723,7 @@
           // ให้ skeleton ของแถวที่ลบแหลกเป็นผงก่อน ค่อยรีเฟรชรายการ+แจ้งเตือน
           await Promise.all(Array.from(rows).map((r) => shatterRow(r)));
           toast("ลบรายการเรียบร้อย");
-          STATE.logs = await apiGet("getFuelLogs", {
-            carId: STATE.activeCarId,
-          });
+          await refreshLogs(STATE.activeCarId);
           populateMainMonthDropdown();
           renderHome();
 
@@ -3759,7 +3852,7 @@
           }
           STATE.activeCarId = carId;
           localStorage.setItem("ff_active_car", carId);
-          STATE.logs = await apiGet("getFuelLogs", { carId });
+          await refreshLogs(carId);
           populateMainMonthDropdown();
           renderCarChip();
 
@@ -4226,11 +4319,28 @@
           return;
         }
 
-        // เรียงลำดับจากใหม่ไปเก่า
-        container.innerHTML = [...filteredLogs]
-          .reverse()
-          .map(logRowHtml)
-          .join("");
+        // เรียงลำดับจากใหม่ไปเก่า แล้วโชว์แค่ 5 รายการล่าสุดพอ ไม่ให้ยาวเกินไป
+        // ถ้าอยากดูรายการเก่ากว่านั้น กดลิงก์ "ดูทั้งหมด" ไปหน้า "สรุปผล" ที่มีแบ่งหน้าให้
+        const MAIN_LOGS_LIMIT = 5;
+        const sortedLogs = [...filteredLogs].reverse();
+        const visibleLogs = sortedLogs.slice(0, MAIN_LOGS_LIMIT);
+
+        let html = visibleLogs.map(logRowHtml).join("");
+
+        if (sortedLogs.length > MAIN_LOGS_LIMIT) {
+          html += `
+            <button
+              type="button"
+              class="btn btn-sm btn-outline"
+              style="width:100%; margin-top:12px;"
+              onclick="openView('stats')"
+            >
+              ดูทั้งหมด (${sortedLogs.length} รายการ)
+            </button>
+          `;
+        }
+
+        container.innerHTML = html;
       }
 
       // 2.1 คำนวณสรุปยอด (ระยะทาง/ค่าน้ำมัน/จำนวนครั้ง/บาทต่อกม.) ของ "เดือนที่เลือก"
