@@ -3441,7 +3441,7 @@
         const fuelLevelBadge =
           l.remainingPercent != null
             ? `<div class="log-card-level">
-        <span class=" pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}" style="font-size:9.5px">
+        <span class=" pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}" style="font-size:9px">
           🛢️ น้ำมันคงเหลือก่อนเติมครั้งนี้ ${fmt(l.remainingLiters)} ลิตร (${fmt(l.remainingPercent)}%)${l.remainingValue != null ? ` ≈ ${fmt(l.remainingValue)} บาท` : ""}
         </span>
       </div>`
