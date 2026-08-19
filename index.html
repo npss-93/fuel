@@ -314,6 +314,7 @@
         pointer-events: none;
       }
       .bottom-nav-inner {
+        position: relative; /* จุดอ้างอิงตำแหน่งของ .nav-pill ที่ไถลตามแท็บ */
         pointer-events: all;
         max-width: 460px;
         width: 100%;
@@ -328,7 +329,28 @@
         box-shadow: var(--shadow);
         padding: 0 4px;
       }
+      /* "pill" พื้นหลังที่ไถลไปหาแท็บที่ active — ใช้ bounce easing เดียวกับ
+         .nav-fab เพื่อให้บุคลิก "เด้งสนุกๆ" เป็นเรื่องเดียวกันทั้งแถบเมนู
+         ตำแหน่ง/ความกว้างคำนวณสดด้วย JS (updateNavPill) เพราะปุ่มมี FAB คั่นกลาง
+         ทำให้ระยะห่างแต่ละปุ่มไม่เท่ากัน คำนวณด้วย CSS ล้วนไม่ได้ */
+      .nav-pill {
+        position: absolute;
+        top: 6px;
+        bottom: 6px;
+        left: 0;
+        width: 0;
+        border-radius: 14px;
+        background: color-mix(in srgb, var(--accent) 16%, transparent);
+        pointer-events: none;
+        z-index: 0;
+        transition:
+          transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+          width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
+          background 0.3s ease;
+      }
       .nav-btn {
+        position: relative;
+        z-index: 1; /* อยู่เหนือ .nav-pill เสมอ */
         background: none;
         border: none;
         color: var(--text-dim);
@@ -341,15 +363,107 @@
         padding: 10px 10px;
         border-radius: 14px;
         cursor: pointer;
-        transition: color 0.2s;
+        transition:
+          color 0.25s ease,
+          scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       .nav-btn .ic {
         font-size: 18px;
+        display: inline-block;
+        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
       }
       .nav-btn.active {
         color: var(--accent);
         font-weight: 900;
         scale: 1.1;
+      }
+      .nav-btn.active .ic {
+        transform: translateY(-1px) scale(1.08);
+      }
+      /* แต่ละไอคอนมีลูกเล่นเคลื่อนไหวของตัวเอง เล่นตอนแท็บนั้นกลายเป็น active
+         (ใช้ bounce easing เดียวกับ .nav-pill/.nav-fab ให้บุคลิกเข้าชุดกัน) */
+      .nav-btn .ic i {
+        display: inline-block;
+        transform-origin: 50% 50%;
+      }
+      @keyframes navIconPopHome {
+        0% {
+          transform: scale(0.5) translateY(7px) rotate(-10deg);
+        }
+        55% {
+          transform: scale(1.25) translateY(-4px) rotate(6deg);
+        }
+        78% {
+          transform: scale(0.92) translateY(1px) rotate(-3deg);
+        }
+        100% {
+          transform: scale(1) translateY(0) rotate(0deg);
+        }
+      }
+      .nav-btn.active .ic-home {
+        animation: navIconPopHome 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes navIconDriveIn {
+        0% {
+          transform: translateX(-10px) scale(0.7);
+          opacity: 0.4;
+        }
+        60% {
+          transform: translateX(2px) scale(1.12);
+          opacity: 1;
+        }
+        100% {
+          transform: translateX(0) scale(1);
+        }
+      }
+      @keyframes navIconIdleBob {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-1.5px);
+        }
+      }
+      .nav-btn.active .ic-car {
+        animation:
+          navIconDriveIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+          navIconIdleBob 1.6s ease-in-out 0.5s infinite;
+      }
+      @keyframes navIconGrowBars {
+        0% {
+          transform: scaleY(0.3) translateY(3px);
+          opacity: 0.5;
+        }
+        60% {
+          transform: scaleY(1.18) translateY(-1px);
+          opacity: 1;
+        }
+        100% {
+          transform: scaleY(1) translateY(0);
+        }
+      }
+      .nav-btn.active .ic-stats {
+        transform-origin: 50% 100%;
+        animation: navIconGrowBars 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
+      }
+      @keyframes navIconGearSpin {
+        from {
+          transform: rotate(0deg);
+        }
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      .nav-btn.active .ic-settings {
+        animation: navIconGearSpin 2.8s linear infinite;
+      }
+      /* กดค้าง/แตะ ให้ยุบตัวเล็กน้อยแบบมีแรงสปริงตีกลับ — ใช้ตัวเลือกนี้หลัง
+         .nav-btn.active เจตนา (specificity เท่ากัน) เพื่อให้ตอนกดปุ่มที่ active
+         อยู่แล้วซ้ำ ก็ยังเห็นอาการ "ยุบ" ตอบสนองการแตะเหมือนปุ่มอื่น ๆ */
+      .nav-btn:active {
+        scale: 0.86;
+        transition-duration: 0.15s;
       }
       .nav-fab {
         position: relative;
@@ -855,6 +969,9 @@
     }
 
       /* ---------- Expand / collapse toggle for the detail grid ---------- */
+       span.lct-chev {
+          font-size: 14px;
+      }
       .log-card-toggle {
         display: flex;
         align-items: center;
@@ -1012,6 +1129,13 @@
       }
       .input:focus {
         border-color: var(--accent);
+      }
+      /* ช่องลิงก์ Google Sheet ที่เชื่อมต่ออยู่แล้วจะถูกล็อกไว้ (read-only)
+         ต้องกด "เปลี่ยนลิงก์ Google Sheet" แล้วยืนยันผ่าน modal เท่านั้นถึงจะแก้ได้ */
+      .input:read-only {
+        color: var(--text-muted);
+        background: var(--surface);
+        cursor: default;
       }
       .input.mono-input {
         font-family: var(--font-mono);
@@ -1616,6 +1740,236 @@
         color: var(--text-dim);
         margin-top: 6px;
       }
+
+      /* ============================================================
+         HOME — skeleton loading state
+         ============================================================ */
+      #homeSkeleton .skel-card {
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 16px;
+        margin-bottom: 14px;
+      }
+      #homeSkeleton .skel-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 0;
+        border-bottom: 1px solid var(--border);
+      }
+      #homeSkeleton .skel-row:last-child {
+        border-bottom: none;
+      }
+
+      /* ============================================================
+         HOME — month filter bar (prominent, hard to miss)
+         ============================================================ */
+      .month-filter-bar {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        background: linear-gradient(
+          135deg,
+          color-mix(in srgb, var(--accent) 14%, var(--surface)),
+          var(--surface)
+        );
+        border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+        border-radius: var(--radius-md);
+        padding: 6px;
+        margin-top: 18px;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 18px
+          color-mix(in srgb, var(--accent) 12%, transparent);
+      }
+      .month-nav-btn {
+        width: 34px;
+        height: 34px;
+        flex-shrink: 0;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        font-size: 12px;
+        transition:
+          transform 0.15s ease,
+          background 0.2s;
+      }
+      .month-nav-btn:active {
+        transform: scale(0.9);
+      }
+      .month-nav-btn:disabled {
+        opacity: 0.3;
+        cursor: default;
+      }
+      .month-select-wrap {
+        flex: 1;
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 0;
+      }
+      .month-cal-ic {
+        position: absolute;
+        left: 12px;
+        font-size: 12px;
+        color: var(--accent);
+        pointer-events: none;
+      }
+      .month-chev-ic {
+        position: absolute;
+        right: 12px;
+        font-size: 10px;
+        color: var(--text-dim);
+        pointer-events: none;
+      }
+      .month-select {
+        width: 100%;
+        border: none;
+        background: transparent;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 14.5px;
+        color: var(--text);
+        text-align: center;
+        padding: 9px 28px;
+        cursor: pointer;
+      }
+      .month-select:focus {
+        outline: none;
+      }
+
+      /* ---------- Home trend chart card ---------- */
+      .home-chart-card {
+        background: var(--surface);
+        border-radius: var(--radius-lg);
+        padding: 16px 14px 10px;
+        margin-bottom: 4px;
+      }
+      .home-chart-head {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        margin-bottom: 10px;
+      }
+      .home-chart-head .htitle {
+        font-family: var(--font-display);
+        font-weight: 700;
+        font-size: 14px;
+      }
+      .home-chart-head .hsub {
+        font-size: 10.5px;
+        color: var(--text-dim);
+      }
+      .home-chart-legend {
+        display: flex;
+        gap: 14px;
+        font-size: 11px;
+        color: var(--text-muted);
+        margin-top: 8px;
+      }
+      .home-chart-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+      }
+      .home-chart-legend i {
+        width: 9px;
+        height: 9px;
+        border-radius: 3px;
+        display: inline-block;
+      }
+
+      /* ============================================================
+         STATS — log history filter bar (search + jump-to-month)
+         ============================================================ */
+      .count-badge {
+        font-size: 11px;
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text-dim);
+        font-weight: 600;
+      }
+      .log-filter-bar {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 12px;
+      }
+      .log-search-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .log-search-ic {
+        position: absolute;
+        left: 14px;
+        font-size: 13px;
+        color: var(--text-dim);
+        pointer-events: none;
+      }
+      .log-search-input {
+        width: 100%;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-size: 13.5px;
+        padding: 11px 14px 11px 36px;
+      }
+      .log-search-input::placeholder {
+        color: var(--text-dim);
+      }
+      .log-search-input:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
+      .log-month-select-wrap {
+        position: relative;
+        display: flex;
+        align-items: center;
+      }
+      .log-month-ic {
+        position: absolute;
+        left: 14px;
+        font-size: 12px;
+        color: var(--accent);
+        pointer-events: none;
+      }
+      .log-month-chev {
+        position: absolute;
+        right: 14px;
+        font-size: 10px;
+        color: var(--text-dim);
+        pointer-events: none;
+      }
+      .log-month-select {
+        width: 100%;
+        appearance: none;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        color: var(--text);
+        font-family: var(--font-body);
+        font-weight: 600;
+        font-size: 13.5px;
+        padding: 11px 32px 11px 36px;
+        cursor: pointer;
+      }
+      .log-month-select:focus {
+        outline: none;
+        border-color: var(--accent);
+      }
       .divider {
         height: 1px;
         background: var(--border);
@@ -1763,127 +2117,326 @@
       <main>
         <!-- ============ HOME VIEW ============ -->
         <section class="view active" data-view="home" id="view-home">
-          <div class="card" id="gaugeCard">
-            <div class="gauge-wrap">
-              <div id="gaugeSvgHolder"></div>
-              <div class="gauge-value mono" id="gaugeValue">--</div>
-              <div class="gauge-unit">กม./ลิตร เฉลี่ย</div>
-              <div class="gauge-label" id="gaugeCompareLabel">
-                ยังไม่มีข้อมูลเปรียบเทียบ
-              </div>
+          <!-- ============ SKELETON (แสดงระหว่างรอโหลดข้อมูล) ============ -->
+          <div id="homeSkeleton">
+            <div class="skel-card" style="text-align: center">
+              <div
+                class="skeleton"
+                style="
+                  width: 168px;
+                  height: 168px;
+                  border-radius: 50%;
+                  margin: 4px auto 0;
+                "
+              ></div>
+              <div
+                class="skeleton"
+                style="width: 90px; height: 13px; margin: 16px auto 0"
+              ></div>
+              <div
+                class="skeleton"
+                style="width: 150px; height: 11px; margin: 8px auto 0"
+              ></div>
             </div>
 
             <div
-              class="fuel-tank-divider"
-              id="fuelTankDivider"
-              style="display: none"
+              class="skeleton"
+              style="height: 48px; border-radius: var(--radius-md)"
             ></div>
-            <div class="fuel-tank-row" id="fuelTankRow" style="display: none">
-              <div class="fuel-tank-icon">⛽</div>
-              <div class="fuel-tank-main">
-                <div class="fuel-tank-top">
-                  <span class="fuel-tank-label"
-                    >น้ำมันคงเหลือ (ก่อนเติมล่าสุด)</span
-                  >
-                  <span class="fuel-tank-pct mono" id="fuelPctText">--%</span>
-                </div>
-                <div class="fuel-tank-bar-bg">
-                  <div
-                    class="fuel-tank-bar-fill"
-                    id="fuelBarFill"
-                    style="width: 0%"
-                  ></div>
-                </div>
-                <div class="fuel-tank-bottom">
-                  <span id="fuelLitersText">เหลือ -- ลิตร</span>
-                  <span id="fuelTankSizeText">จากถัง -- ลิตร</span>
-                </div>
-              </div>
-            </div>
-          </div>
+            <div style="height: 14px"></div>
 
-          <!-- ดรอปดาวน์เลือกเดือน เฉพาะหน้าหลักเท่านั้น -->
-          <div
-            style="
-              display: flex;
-              justify-content: space-between;
-              align-items: center;
-              margin-bottom: 12px;
-              padding: 0 4px;
-            "
-          >
-            <span class="section-title">ประวัติการเติมน้ำมัน</span>
-            <select
-              id="mainMonthFilter"
-              class="btn btn-sm btn-outline"
-              style="font-size: 13px; padding: 4px 8px"
-              onchange="changeMainMonth(this.value)"
-            >
-              <!-- รายชื่อเดือนจะถูกสร้างอัตโนมัติ -->
-            </select>
-          </div>
-
-          <div class="stat-grid">
-            <div class="stat-box">
-              <div class="k">ระยะทางรวม</div>
-              <div class="v" id="homeDistance">--<small> กม.</small></div>
-            </div>
-            <div class="stat-box">
-              <div class="k">ค่าน้ำมันรวม</div>
-              <div class="v" id="homeCost">--<small> ฿</small></div>
-            </div>
-            <div class="stat-box">
-              <div class="k">เติมทั้งหมด</div>
-              <div class="v" id="homeFills">--<small> ครั้ง</small></div>
-            </div>
-            <div class="stat-box">
-              <div class="k">บาท/กม.</div>
-              <div class="v" id="homeCostKm">--<small> ฿</small></div>
-            </div>
-          </div>
-
-          <div class="section-title">
-            <div>
-              ราคาน้ำมันวันนี้
-              <br />
-              <span
-                id="oilRemark2"
-                style="
-                  font-size: 9px;
-                  font-weight: normal;
-                  color: var(--text-dim);
-                "
-              ></span>
-            </div>
-            <span
-              class="link"
-              id="oilDateLabel"
-              onclick="refreshOilPrices(true)"
-              >อัปเดต...</span
-            >
-          </div>
-          <div class="card" style="padding: 14px">
-            <div class="price-ticker" id="priceTicker">
-              <div class="price-pill">
-                <div class="skeleton" style="width: 60px; height: 12px"></div>
+            <div class="stat-grid" style="margin-bottom: 14px">
+              <div class="stat-box">
+                <div class="skeleton" style="width: 60%; height: 9px"></div>
                 <div
                   class="skeleton"
-                  style="width: 40px; height: 16px; margin-top: 6px"
+                  style="width: 45%; height: 17px; margin-top: 8px"
+                ></div>
+              </div>
+              <div class="stat-box">
+                <div class="skeleton" style="width: 60%; height: 9px"></div>
+                <div
+                  class="skeleton"
+                  style="width: 45%; height: 17px; margin-top: 8px"
+                ></div>
+              </div>
+              <div class="stat-box">
+                <div class="skeleton" style="width: 60%; height: 9px"></div>
+                <div
+                  class="skeleton"
+                  style="width: 45%; height: 17px; margin-top: 8px"
+                ></div>
+              </div>
+              <div class="stat-box">
+                <div class="skeleton" style="width: 60%; height: 9px"></div>
+                <div
+                  class="skeleton"
+                  style="width: 45%; height: 17px; margin-top: 8px"
                 ></div>
               </div>
             </div>
+
+            <div class="skel-card">
+              <div
+                class="skeleton"
+                style="width: 130px; height: 12px; margin-bottom: 14px"
+              ></div>
+              <div
+                class="skeleton"
+                style="height: 130px; border-radius: 10px"
+              ></div>
+            </div>
+
+            <div class="skel-card" style="padding: 14px">
+              <div style="display: flex; gap: 10px">
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 60px; height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 40px; height: 16px; margin-top: 6px"
+                  ></div>
+                </div>
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 60px; height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 40px; height: 16px; margin-top: 6px"
+                  ></div>
+                </div>
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 60px; height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 40px; height: 16px; margin-top: 6px"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="skel-card">
+              <div class="skel-row">
+                <div
+                  class="skeleton"
+                  style="width: 38px; height: 38px; border-radius: 10px"
+                ></div>
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 70%; height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 40%; height: 10px; margin-top: 6px"
+                  ></div>
+                </div>
+                <div class="skeleton" style="width: 50px; height: 14px"></div>
+              </div>
+              <div class="skel-row">
+                <div
+                  class="skeleton"
+                  style="width: 38px; height: 38px; border-radius: 10px"
+                ></div>
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 55% ;height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 35%; height: 10px; margin-top: 6px"
+                  ></div>
+                </div>
+                <div class="skeleton" style="width: 50px; height: 14px"></div>
+              </div>
+              <div class="skel-row">
+                <div
+                  class="skeleton"
+                  style="width: 38px; height: 38px; border-radius: 10px"
+                ></div>
+                <div style="flex: 1">
+                  <div class="skeleton" style="width: 65%; height: 12px"></div>
+                  <div
+                    class="skeleton"
+                    style="width: 38%; height: 10px; margin-top: 6px"
+                  ></div>
+                </div>
+                <div class="skeleton" style="width: 50px; height: 14px"></div>
+              </div>
+            </div>
           </div>
 
-          <div class="section-title">
-            รายการเติมน้ำมัน
-            <span class="link" onclick="openView('stats')">ดูทั้งหมด</span>
-          </div>
-          <div class="card" id="recentLogsCard">
-            <div class="empty-state">
-              <div class="em-ic">🛢️</div>
-              <div class="em-t">ยังไม่มีข้อมูล</div>
-              <div class="em-s">
-                กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก
+          <!-- ============ CONTENT จริง (ซ่อนไว้จนกว่าจะโหลดเสร็จ) ============ -->
+          <div id="homeContent" style="display: none">
+            <div class="card" id="gaugeCard">
+              <div class="gauge-wrap">
+                <div id="gaugeSvgHolder"></div>
+                <div class="gauge-value mono" id="gaugeValue">--</div>
+                <div class="gauge-unit">กม./ลิตร เฉลี่ย</div>
+                <div class="gauge-label" id="gaugeCompareLabel">
+                  ยังไม่มีข้อมูลเปรียบเทียบ
+                </div>
+              </div>
+
+              <div
+                class="fuel-tank-divider"
+                id="fuelTankDivider"
+                style="display: none"
+              ></div>
+              <div
+                class="fuel-tank-row"
+                id="fuelTankRow"
+                style="display: none"
+              >
+                <div class="fuel-tank-icon">⛽</div>
+                <div class="fuel-tank-main">
+                  <div class="fuel-tank-top">
+                    <span class="fuel-tank-label"
+                      >น้ำมันคงเหลือ (ก่อนเติมล่าสุด)</span
+                    >
+                    <span class="fuel-tank-pct mono" id="fuelPctText"
+                      >--%</span
+                    >
+                  </div>
+                  <div class="fuel-tank-bar-bg">
+                    <div
+                      class="fuel-tank-bar-fill"
+                      id="fuelBarFill"
+                      style="width: 0%"
+                    ></div>
+                  </div>
+                  <div class="fuel-tank-bottom">
+                    <span id="fuelLitersText">เหลือ -- ลิตร</span>
+                    <span id="fuelTankSizeText">จากถัง -- ลิตร</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- แถบเลือกเดือน — ทำให้เด่นชัด สังเกตง่าย พร้อมปุ่มเลื่อนเดือนซ้าย/ขวา -->
+            <div class="month-filter-bar" id="monthFilterBar">
+              <button
+                type="button"
+                class="month-nav-btn"
+                id="monthPrevBtn"
+                onclick="stepMainMonth(1)"
+                aria-label="เดือนก่อนหน้า"
+              >
+                <i class="fas fa-chevron-left"></i>
+              </button>
+              <div class="month-select-wrap">
+                <i class="fas fa-calendar-alt month-cal-ic"></i>
+                <select
+                  id="mainMonthFilter"
+                  class="month-select"
+                  onchange="changeMainMonth(this.value)"
+                >
+                  <!-- รายชื่อเดือนจะถูกสร้างอัตโนมัติ -->
+                </select>
+                <i class="fas fa-chevron-down month-chev-ic"></i>
+              </div>
+              <button
+                type="button"
+                class="month-nav-btn"
+                id="monthNextBtn"
+                onclick="stepMainMonth(-1)"
+                aria-label="เดือนถัดไป"
+              >
+                <i class="fas fa-chevron-right"></i>
+              </button>
+            </div>
+
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="k">ระยะทางรวม</div>
+                <div class="v" id="homeDistance">--<small> กม.</small></div>
+              </div>
+              <div class="stat-box">
+                <div class="k">ค่าน้ำมันรวม</div>
+                <div class="v" id="homeCost">--<small> ฿</small></div>
+              </div>
+              <div class="stat-box">
+                <div class="k">เติมทั้งหมด</div>
+                <div class="v" id="homeFills">--<small> ครั้ง</small></div>
+              </div>
+              <div class="stat-box">
+                <div class="k">บาท/กม.</div>
+                <div class="v" id="homeCostKm">--<small> ฿</small></div>
+              </div>
+            </div>
+
+            <div style="height: 14px"></div>
+
+            <!-- กราฟแนวโน้ม: แสดงทุกรายการเติมน้ำมันของเดือนที่เลือกด้านบน -->
+            <div class="home-chart-card" id="homeChartCard">
+              <div class="home-chart-head">
+                <span class="htitle" id="homeChartTitle">แนวโน้มรายเดือน</span>
+                <span class="hsub" id="homeChartSub"
+                  >ค่าน้ำมัน &amp; กม./ลิตร</span
+                >
+              </div>
+              <canvas id="homeTrendChart" height="150"></canvas>
+              <div
+                class="empty-state"
+                id="homeChartEmpty"
+                style="display: none; padding: 20px 0"
+              >
+                <div class="em-ic">📊</div>
+                <div class="em-t">ไม่มีข้อมูลเดือนนี้</div>
+              </div>
+              <div class="home-chart-legend" id="homeChartLegend">
+                <span
+                  ><i style="background: var(--accent)"></i>ค่าน้ำมัน (฿)</span
+                >
+                <span
+                  ><i
+                    id="homeChartLegendLineDot"
+                    style="background: var(--good)"
+                  ></i
+                  >กม./ลิตร</span
+                >
+              </div>
+            </div>
+
+            <div class="section-title" style="margin-top: 18px">
+              <div>
+                ราคาน้ำมันวันนี้
+                <br />
+                <span
+                  id="oilRemark2"
+                  style="
+                    font-size: 9px;
+                    font-weight: normal;
+                    color: var(--text-dim);
+                  "
+                ></span>
+              </div>
+              <span
+                class="link"
+                id="oilDateLabel"
+                onclick="refreshOilPrices(true)"
+                >อัปเดต...</span
+              >
+            </div>
+            <div class="card" style="padding: 14px">
+              <div class="price-ticker" id="priceTicker">
+                <div class="price-pill">
+                  <div
+                    class="skeleton"
+                    style="width: 60px; height: 12px"
+                  ></div>
+                  <div
+                    class="skeleton"
+                    style="width: 40px; height: 16px; margin-top: 6px"
+                  ></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="section-title">
+              รายการเติมน้ำมัน
+              <span class="link" onclick="openView('stats')">ดูทั้งหมด</span>
+            </div>
+            <div class="card" id="recentLogsCard">
+              <div class="empty-state">
+                <div class="em-ic">🛢️</div>
+                <div class="em-t">ยังไม่มีข้อมูล</div>
+                <div class="em-s">
+                  กดปุ่ม + ด้านล่างเพื่อบันทึกการเติมน้ำมันครั้งแรก
+                </div>
               </div>
             </div>
           </div>
@@ -2130,7 +2683,33 @@
             <canvas id="fuelLevelChart" height="180"></canvas>
           </div>
 
-          <div class="section-title">ประวัติการเติม</div>
+          <div class="section-title">
+            ประวัติการเติม
+            <span class="count-badge" id="logFilterCount"></span>
+          </div>
+          <div class="log-filter-bar">
+            <div class="log-search-wrap">
+              <i class="fas fa-search log-search-ic"></i>
+              <input
+                type="text"
+                id="logSearchInput"
+                class="log-search-input"
+                placeholder="ค้นหา ชนิดน้ำมัน, บันทึกช่วยจำ..."
+                oninput="onLogSearchInput(this.value)"
+              />
+            </div>
+            <div class="log-month-select-wrap">
+              <i class="fas fa-calendar-alt log-month-ic"></i>
+              <select
+                id="logMonthFilter"
+                class="log-month-select"
+                onchange="onLogMonthFilterChange(this.value)"
+              >
+                <option value="all">ทุกเดือน</option>
+              </select>
+              <i class="fas fa-chevron-down log-month-chev"></i>
+            </div>
+          </div>
           <div class="card" id="allLogsCard"></div>
         </section>
 
@@ -2178,15 +2757,14 @@
                   color: var(--text-muted);
                 "
               >
-                วางลิงก์ชีต ระบบจะดึงเฉพาะ Sheet ID ไปใช้
-                และสร้างตารางที่จำเป็นให้อัตโนมัติ
+                วางลิงก์ชีต ระบบจะสร้างตารางที่จำเป็นให้อัตโนมัติ
               </div>
             </div>
 
             <button
               class="btn btn-outline"
               id="connectSheetBtn"
-              onclick="connectSheet()"
+              onclick="handleSheetConnectClick()"
             >
               เชื่อมต่อ
             </button>
@@ -2198,7 +2776,7 @@
           <div class="section-title">เกี่ยวกับ</div>
           <div class="card">
             <div style="font-weight: 700; margin-bottom: 4px">
-              Full Fuel v1.0
+              Full Fuel v1.1
             </div>
             <div
               class="ts"
@@ -2224,15 +2802,16 @@
 
       <div class="bottom-nav">
         <div class="bottom-nav-inner">
+          <div class="nav-pill" id="navPill"></div>
           <button
             class="nav-btn active"
             data-nav="home"
             onclick="openView('home')"
           >
-            <span class="ic">🏠</span>หน้าหลัก
+            <span class="ic"><i class="fas fa-home ic-home"></i></span>หน้าหลัก
           </button>
           <button class="nav-btn" data-nav="cars" onclick="openView('cars')">
-            <span class="ic">🚗</span>รถของฉัน
+            <span class="ic"><i class="fas fa-car ic-car"></i></span>รถของฉัน
           </button>
           <div
             class="nav-fab"
@@ -2243,14 +2822,14 @@
             aria-label="เพิ่มรายการเติมน้ำมัน"
           ></div>
           <button class="nav-btn" data-nav="stats" onclick="openView('stats')">
-            <span class="ic">📊</span>สรุปผล
+            <span class="ic"><i class="fas fa-chart-bar ic-stats"></i></span>สรุปผล
           </button>
           <button
             class="nav-btn"
             data-nav="settings"
             onclick="openView('settings')"
           >
-            <span class="ic">⚙️</span>ตั้งค่า
+            <span class="ic"><i class="fas fa-cog ic-settings"></i></span>ตั้งค่า
           </button>
         </div>
       </div>
@@ -2375,6 +2954,38 @@
       </div>
     </div>
 
+    <!-- ============ CHANGE GOOGLE SHEET CONFIRM MODAL ============ -->
+    <div class="overlay" id="changeSheetModalOverlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span>เปลี่ยนลิงก์ Google Sheet?</span
+          ><button class="icon-btn" onclick="closeChangeSheetModal()">
+            ✕
+          </button>
+        </div>
+        <div
+          class="ts"
+          style="color: var(--text-muted); line-height: 1.6; margin-bottom: 18px"
+        >
+          ระบบจะยกเลิกการเชื่อมต่อกับ Google Sheet ปัจจุบัน
+          และล้างข้อมูลรถ/ประวัติการเติมที่แสดงอยู่ในแอปนี้
+          (ข้อมูลในชีตเดิมจะไม่ถูกลบ) จากนั้นคุณจะต้องวางลิงก์ Google Sheet
+          ใหม่เพื่อเชื่อมต่ออีกครั้ง ต้องการดำเนินการต่อหรือไม่?
+        </div>
+        <button class="btn btn-danger" onclick="confirmChangeSheet()">
+          ยืนยัน เปลี่ยนลิงก์
+        </button>
+        <button
+          class="btn btn-outline"
+          style="margin-top: 10px"
+          onclick="closeChangeSheetModal()"
+        >
+          ยกเลิก
+        </button>
+      </div>
+    </div>
+
     <div id="toast"></div>
 
     <script>
@@ -2419,11 +3030,83 @@
         costChart: null,
         kmlChart: null,
         fuelLevelChart: null,
+        homeTrendChart: null,
+        mainMonthList: [],
         logPage: 1,
+        logSearchQuery: "",
+        logMonthFilterVal: "all",
         mainMonth: new Date().toISOString().substring(0, 7),
         editingLogId: null,
         logPreviousView: "home",
       };
+
+      // ---------------- Network helper ----------------
+      // Backend เป็น Google Apps Script Web App (script.google.com/macros/.../exec)
+      // ที่ผู้ใช้ทุกคนเรียกร่วมกันตัวเดียว — endpoint แบบนี้ขึ้นชื่อเรื่องไม่เสถียร:
+      // บางครั้ง container ต้อง "cold start" ช้า, บางครั้งมีคิวจำกัดจำนวนงานที่รันพร้อมกัน
+      // ทำให้ request ค้างนานผิดปกติจนเบราว์เซอร์/เครือข่าย (โดยเฉพาะมือถือที่สลับ
+      // wifi/4G หรือมี proxy ตัดการเชื่อมต่อ) ปล่อย error ระดับเครือข่ายออกมาเป็น
+      // "Failed to fetch" (Chrome) / "Load failed" (Safari) แบบสุ่ม ๆ — ไม่ใช่ error
+      // จากตัว logic ของแอปเอง เดิมโค้ดเรียก fetch() ตรง ๆ ไม่มี timeout และไม่มี retry
+      // เลย พอเจอปัญหาระดับเครือข่ายแค่ครั้งเดียวก็ error ทันที ฟังก์ชันนี้ครอบ fetch()
+      // ปกติด้วย 2 กลไก:
+      //   1) timeout ผ่าน AbortController กันไม่ให้ค้างไม่มีที่สิ้นสุด
+      //   2) retry แบบ exponential backoff เฉพาะตอน "ล้มเหลวระดับเครือข่าย/timeout"
+      //      เท่านั้น — ถ้าเซิร์ฟเวอร์ตอบกลับมาแล้ว (เช่น error เชิง logic จาก backend)
+      //      จะไม่ retry เพราะลองใหม่ก็ได้ผลลัพธ์เดิม
+      const FETCH_TIMEOUT_MS = 15000;
+      const FETCH_MAX_RETRIES = 2;
+
+      function isNetworkError(err) {
+        return (
+          err instanceof TypeError ||
+          err.name === "AbortError" ||
+          /failed to fetch|load failed|network ?error/i.test(
+            (err && err.message) || "",
+          )
+        );
+      }
+
+      // ข้อความ error ดิบจาก fetch (เช่น "Failed to fetch") อ่านไม่รู้เรื่องสำหรับ
+      // ผู้ใช้ทั่วไป — แปลงเป็นข้อความไทยที่บอกสาเหตุที่เป็นไปได้จริง ๆ แทน
+      function friendlyErrorMessage(err) {
+        if (isNetworkError(err)) {
+          return "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (อินเทอร์เน็ตไม่เสถียรหรือเซิร์ฟเวอร์ตอบช้า) ลองใหม่อีกครั้ง";
+        }
+        return (err && err.message) || String(err);
+      }
+
+      async function fetchWithRetry(url, options, retryOpts) {
+        const retries =
+          (retryOpts && retryOpts.retries) ?? FETCH_MAX_RETRIES;
+        const onRetry = retryOpts && retryOpts.onRetry;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+          try {
+            const res = await fetch(url, {
+              ...options,
+              signal: controller.signal,
+            });
+            clearTimeout(timer);
+            return res;
+          } catch (err) {
+            clearTimeout(timer);
+            const isLastAttempt = attempt === retries;
+            if (!isNetworkError(err) || isLastAttempt) {
+              if (err.name === "AbortError") {
+                throw new Error(
+                  "เชื่อมต่อเซิร์ฟเวอร์ไม่สำเร็จ (หมดเวลารอ) ลองใหม่อีกครั้ง",
+                );
+              }
+              throw err;
+            }
+            if (onRetry) onRetry(attempt + 1, retries);
+            // รอสักครู่ก่อนลองใหม่ (exponential backoff: 800ms, 1600ms, ...)
+            await new Promise((r) => setTimeout(r, 800 * Math.pow(2, attempt)));
+          }
+        }
+      }
 
       // ---------------- API ----------------
       async function apiGet(action, params) {
@@ -2435,7 +3118,7 @@
         Object.entries(params || {}).forEach(([k, v]) => {
           if (v !== undefined && v !== null) url.searchParams.set(k, v);
         });
-        const res = await fetch(url.toString());
+        const res = await fetchWithRetry(url.toString());
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "API error");
         return json.data;
@@ -2443,7 +3126,7 @@
       async function apiPost(action, payload) {
         if (!STATE.sheetId)
           throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
-        const res = await fetch(API_URL, {
+        const res = await fetchWithRetry(API_URL, {
           method: "POST",
           headers: { "Content-Type": "text/plain;charset=utf-8" }, // เลี่ยง CORS preflight
           body: JSON.stringify({ action, sheetId: STATE.sheetId, payload }),
@@ -2453,12 +3136,16 @@
         return json.data;
       }
       // เรียกใช้ตอนยังไม่ได้บันทึก sheetId ลง STATE (เช่นตอนตรวจสอบ/สร้างตารางครั้งแรก)
-      async function apiPostRaw(action, sheetId, payload) {
-        const res = await fetch(API_URL, {
-          method: "POST",
-          headers: { "Content-Type": "text/plain;charset=utf-8" },
-          body: JSON.stringify({ action, sheetId, payload: payload || {} }),
-        });
+      async function apiPostRaw(action, sheetId, payload, onRetry) {
+        const res = await fetchWithRetry(
+          API_URL,
+          {
+            method: "POST",
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ action, sheetId, payload: payload || {} }),
+          },
+          { onRetry },
+        );
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "API error");
         return json.data;
@@ -2475,14 +3162,20 @@
           STATE.theme === "dark";
         document.body.setAttribute("data-color-theme", STATE.colorTheme);
         renderColorThemePicker();
-        document.getElementById("sheetIdInput").value = STATE.sheetId
-          ? `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/edit`
-          : "";
+        updateSheetConnectionUI();
         document.getElementById("logDate").value = new Date()
           .toISOString()
           .slice(0, 10);
         renderIconPicker();
         renderColorPicker();
+        updateNavPill(true); // จัดตำแหน่ง pill ให้ตรงกับแท็บ active เริ่มต้น (ไม่มี animation)
+        // เผื่อฟอนต์ (Space Grotesk/Inter) โหลดเสร็จทีหลังแล้วทำให้ความกว้างปุ่ม
+        // ขยับเล็กน้อย — จัดตำแหน่ง pill ซ้ำอีกทีแบบไม่มี animation กันเพี้ยน
+        if (document.fonts && document.fonts.ready) {
+          document.fonts.ready
+            .then(() => updateNavPill(true))
+            .catch(() => {});
+        }
 
         if (!STATE.sheetId) {
           openView("settings");
@@ -2498,7 +3191,7 @@
       async function fetchCSV(sheetName) {
         if (!STATE.sheetId) throw new Error("ไม่พบ Sheet ID");
         const url = `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
-        const res = await fetch(url);
+        const res = await fetchWithRetry(url);
         if (!res.ok)
           throw new Error("โหลดข้อมูลล้มเหลว ตรวจสอบ Sheet ID และการแชร์");
         const text = await res.text();
@@ -2715,8 +3408,24 @@
         return oilData;
       }
 
+      // ---------------- Home skeleton toggle ----------------
+      // แสดง/ซ่อน skeleton ของหน้าหลักทุกส่วนพร้อมกัน ระหว่างรอโหลดข้อมูล
+      function showHomeSkeleton() {
+        const skel = document.getElementById("homeSkeleton");
+        const content = document.getElementById("homeContent");
+        if (skel) skel.style.display = "block";
+        if (content) content.style.display = "none";
+      }
+      function hideHomeSkeleton() {
+        const skel = document.getElementById("homeSkeleton");
+        const content = document.getElementById("homeContent");
+        if (skel) skel.style.display = "none";
+        if (content) content.style.display = "block";
+      }
+
       // วางต่อท้ายฟังก์ชัน enrichLogs(...)
       async function bootstrap(showToast) {
+        showHomeSkeleton();
         try {
           setTopSubtitle("กำลังโหลดข้อมูลด่วน...");
 
@@ -2740,6 +3449,17 @@
 
           populateMainMonthDropdown();
 
+          // เผยการ์ด #homeContent (เอา skeleton ออก) "ก่อน" เรียก renderHome()
+          // ที่จะไปสร้างกราฟแนวโน้มข้างใน (renderHomeChart -> new Chart(...))
+          // เดิมสลับลำดับกัน ทำให้ตอนโหลดหน้า/รีเฟรชครั้งแรก กราฟถูกสร้างขณะที่
+          // #homeContent ยัง display:none อยู่ (จาก showHomeSkeleton() ด้านบน)
+          // Chart.js เลยวัดขนาด canvas ไม่ได้และข้าม animation "โตขึ้นจากล่าง"
+          // ไปเลย ต่างจากตอนเปลี่ยนเดือนที่การ์ดโชว์อยู่แล้วเลยเห็น animation ปกติ
+          // สลับลำดับให้ hideHomeSkeleton() มาก่อน ก็จะเห็น animation เหมือนกันทุกครั้ง
+          // (ย้ายแบบนี้ปลอดภัย เพราะทุกบรรทัดด้านล่างเป็น sync ล้วน ไม่มี await คั่น
+          // เบราว์เซอร์จึงไม่มีจังหวะ repaint ระหว่างทางให้เห็นเนื้อหาเก่า/ว่างเปล่า)
+          hideHomeSkeleton();
+
           renderCarChip();
           renderCarsList();
           renderOilPrices();
@@ -2749,18 +3469,48 @@
           if (showToast) toast("โหลดข้อมูลล่าสุดเรียบร้อย");
           setTopSubtitle("บันทึกการเติมน้ำมัน");
           document.getElementById("apiStatusHint").textContent =
-            "✅ เชื่อมต่อโหมดความเร็วสูงสำเร็จ";
+            "✅ เชื่อมต่อสำเร็จ";
         } catch (err) {
+          const msg = friendlyErrorMessage(err);
           setTopSubtitle("เชื่อมต่อไม่สำเร็จ");
-          toast("Error: " + err.message);
-          document.getElementById("apiStatusHint").textContent =
-            "⚠️ " + err.message;
+          toast("Error: " + msg);
+          document.getElementById("apiStatusHint").textContent = "⚠️ " + msg;
+          hideHomeSkeleton();
         }
       }
 
       function setTopSubtitle(t) {
         document.getElementById("topSubtitle").textContent = t;
       }
+
+      // ---------------- Bottom nav: pill พื้นหลังไถลตามแท็บ active ----------------
+      // คำนวณตำแหน่ง/ความกว้างของ .nav-pill จากปุ่มที่ active จริง ๆ ด้วย JS
+      // (คำนวณด้วย CSS ล้วนไม่ได้ เพราะมี .nav-fab แทรกกลางแถบทำให้ระยะห่าง
+      // แต่ละปุ่มไม่เท่ากัน) skipAnimation=true ใช้ตอนจัดตำแหน่งครั้งแรก/หลัง
+      // resize เพื่อไม่ให้เห็น pill ไถลมาจากตำแหน่งเดิมแบบผิดที่ผิดทาง
+      function updateNavPill(skipAnimation) {
+        const pill = document.getElementById("navPill");
+        const inner = document.querySelector(".bottom-nav-inner");
+        const activeBtn = document.querySelector(".nav-btn.active");
+        if (!pill || !inner || !activeBtn) return;
+        const innerRect = inner.getBoundingClientRect();
+        const btnRect = activeBtn.getBoundingClientRect();
+        const x = btnRect.left - innerRect.left;
+        if (skipAnimation) pill.style.transition = "none";
+        pill.style.width = btnRect.width + "px";
+        pill.style.transform = `translateX(${x}px)`;
+        if (skipAnimation) {
+          // บังคับ reflow ก่อนคืนค่า transition กลับ ไม่งั้นครั้งถัดไปที่ pill
+          // ขยับจะไม่มี animation ไปด้วย (browser อาจ batch การเปลี่ยน style ไว้)
+          void pill.offsetWidth;
+          pill.style.transition = "";
+        }
+      }
+      let navPillResizeTimer;
+      window.addEventListener("resize", () => {
+        clearTimeout(navPillResizeTimer);
+        navPillResizeTimer = setTimeout(() => updateNavPill(true), 120);
+      });
 
       // ---------------- Navigation ----------------
       function openView(name) {
@@ -2780,6 +3530,7 @@
             .forEach((b) =>
               b.classList.toggle("active", b.dataset.nav === name),
             );
+          updateNavPill(); // ไถล pill พื้นหลังไปหาแท็บที่ active ตัวใหม่
           // ออกจากหน้าฟอร์มโดยไม่กดยกเลิก ให้ถือว่ายกเลิกการแก้ไขไปด้วย
           if (name !== "log") STATE.editingLogId = null;
           if (name === "log") prepareLogForm();
@@ -2937,6 +3688,63 @@
         return null;
       }
 
+      // ปรับหน้าตาช่อง "การเชื่อมต่อ Google Sheet" ให้ตรงกับสถานะปัจจุบัน:
+      // - เชื่อมต่ออยู่แล้ว -> ล็อกช่องกรอก (แก้ไขตรงๆ ไม่ได้) + ปุ่มเปลี่ยนเป็น
+      //   "เปลี่ยนลิงก์ Google Sheet" (ต้องผ่าน modal ยืนยันก่อนเสมอ)
+      // - ยังไม่เชื่อมต่อ -> ช่องกรอกว่าง แก้ไขได้ปกติ + ปุ่ม "เชื่อมต่อ"
+      function updateSheetConnectionUI() {
+        const input = document.getElementById("sheetIdInput");
+        const btn = document.getElementById("connectSheetBtn");
+        const hint = document.getElementById("apiStatusHint");
+        if (!input || !btn) return;
+        if (STATE.sheetId) {
+          input.value = `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/edit`;
+          input.readOnly = true;
+          btn.textContent = "เปลี่ยนลิงก์ Google Sheet";
+          if (hint) hint.textContent = "✅ เชื่อมต่อกับ Google Sheet อยู่แล้ว";
+        } else {
+          input.value = "";
+          input.readOnly = false;
+          btn.textContent = "เชื่อมต่อ";
+          if (hint) hint.textContent = "ยังไม่ได้เชื่อมต่อ Google Sheet";
+        }
+      }
+
+      // ปุ่มเดียวทำสองหน้าที่ตามสถานะ: ยังไม่เชื่อมต่อ -> เชื่อมต่อเลย,
+      // เชื่อมต่ออยู่แล้ว -> เด้ง modal ถามยืนยันก่อนเปลี่ยนลิงก์ใหม่เสมอ
+      function handleSheetConnectClick() {
+        if (STATE.sheetId) {
+          openChangeSheetModal();
+        } else {
+          connectSheet();
+        }
+      }
+
+      function openChangeSheetModal() {
+        document.getElementById("changeSheetModalOverlay").classList.add("open");
+      }
+      function closeChangeSheetModal() {
+        closeOverlay("changeSheetModalOverlay");
+      }
+
+      // ผู้ใช้กดยืนยันใน modal แล้ว -> ล้าง ff_sheet_id ทิ้งจริง แล้วเปิดช่องกรอก
+      // ให้กลับไปอยู่ในสถานะ "ยังไม่เชื่อมต่อ" พร้อมให้วางลิงก์ใหม่/เริ่มเก็บใหม่
+      function confirmChangeSheet() {
+        STATE.sheetId = "";
+        localStorage.removeItem("ff_sheet_id");
+        localStorage.removeItem("ff_active_car");
+        STATE.activeCarId = null;
+        STATE.cars = [];
+        STATE.logs = [];
+
+        closeChangeSheetModal();
+        updateSheetConnectionUI();
+        toast("ยกเลิกการเชื่อมต่อ Google Sheet เดิมแล้ว วางลิงก์ใหม่เพื่อเชื่อมต่อ");
+
+        const input = document.getElementById("sheetIdInput");
+        if (input) input.focus();
+      }
+
       async function connectSheet() {
         const sheetInput = document.getElementById("sheetIdInput");
         if (!sheetInput) {
@@ -2966,7 +3774,12 @@
 
         try {
           // สร้างชีต Cars/FuelLogs ให้พร้อมใช้งานก่อน ถ้าสำเร็จค่อยถือว่าเชื่อมต่อสำเร็จ
-          await apiPostRaw("setupSheets", id, {});
+          // ส่ง onRetry เข้าไปด้วย เพื่อโชว์สถานะให้ผู้ใช้เห็นตอนที่กำลังลองใหม่
+          // อัตโนมัติ (เช่น เจอ "Failed to fetch" จากเครือข่ายไม่เสถียรชั่วคราว)
+          // แทนที่จะปล่อยให้ปุ่มค้างเฉย ๆ โดยไม่รู้ว่ากำลังเกิดอะไรขึ้น
+          await apiPostRaw("setupSheets", id, {}, (attempt, max) => {
+            hint.textContent = `⏳ เครือข่ายไม่เสถียร กำลังลองเชื่อมต่อใหม่ (${attempt}/${max})...`;
+          });
 
           // เปลี่ยน Sheet ID ใหม่ ต้องล้างข้อมูล/สถานะของชีตเก่าทิ้ง กันข้อมูลปนกัน
           const isNewSheet = STATE.sheetId !== id;
@@ -2979,15 +3792,21 @@
             STATE.logs = [];
           }
 
+          // เชื่อมต่อสำเร็จ -> ล็อกช่องกรอกไว้ (แก้ไขลิงก์ตรงๆ ไม่ได้แล้ว ต้องกด
+          // "เปลี่ยนลิงก์ Google Sheet" แล้วยืนยันผ่าน modal เท่านั้น)
+          sheetInput.readOnly = true;
+          sheetInput.value = `https://docs.google.com/spreadsheets/d/${id}/edit`;
+
           hint.textContent = "✅ เชื่อมต่อสำเร็จ สร้างตารางพร้อมใช้งานแล้ว";
           toast("เชื่อมต่อ Google Sheet สำเร็จ กำลังโหลดข้อมูล...");
           await bootstrap(true);
         } catch (err) {
-          hint.textContent = "⚠️ เชื่อมต่อไม่สำเร็จ: " + err.message;
-          toast("เชื่อมต่อไม่สำเร็จ: " + err.message);
+          const msg = friendlyErrorMessage(err);
+          hint.textContent = "⚠️ เชื่อมต่อไม่สำเร็จ: " + msg;
+          toast("เชื่อมต่อไม่สำเร็จ: " + msg);
         } finally {
           btn.disabled = false;
-          btn.textContent = "เชื่อมต่อ";
+          btn.textContent = STATE.sheetId ? "เปลี่ยนลิงก์ Google Sheet" : "เชื่อมต่อ";
         }
       }
 
@@ -3010,11 +3829,19 @@
       async function selectCar(carId) {
         STATE.activeCarId = carId;
         localStorage.setItem("ff_active_car", carId);
+        showHomeSkeleton();
         renderCarChip();
         renderCarsList();
         await refreshLogs(carId);
         populateMainMonthDropdown();
         renderHome();
+        hideHomeSkeleton();
+        // ล้างตัวกรอง/คำค้นของประวัติการเติมเดิม กันสับสนตอนสลับไปดูรถอีกคัน
+        STATE.logSearchQuery = "";
+        STATE.logMonthFilterVal = "all";
+        STATE.logPage = 1;
+        const searchInput = document.getElementById("logSearchInput");
+        if (searchInput) searchInput.value = "";
         openView("home");
       }
 
@@ -3349,6 +4176,9 @@
         // สรุปยอดของ "เดือนที่เลือก" จากดรอปดาวน์ (STATE.mainMonth)
         updateHomeMonthSummary();
 
+        // กราฟแนวโน้มของเดือนที่เลือก (ค่าน้ำมัน + กม./ลิตร รายรายการ)
+        renderHomeChart();
+
         // รายการเติมน้ำมัน (การ์ดเดียวกับที่กรองตามเดือนที่เลือก)
         // เดิมตรงนี้ทำหน้าที่โชว์ 5 รายการล่าสุดของ recentLogsCard เอง แต่ตอนนี้
         // ให้ renderMainLogs() เป็นคนดูแลการ์ดใบนี้แทนที่เดียว (กรองตามเดือน)
@@ -3441,7 +4271,7 @@
         const fuelLevelBadge =
           l.remainingPercent != null
             ? `<div class="log-card-level">
-        <span class=" pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}" style="font-size:9px">
+        <span class=" pill ${l.remainingPercent <= 15 ? "bad" : l.remainingPercent <= 40 ? "warn" : "good"}" style="font-size:8px">
           🛢️ น้ำมันคงเหลือก่อนเติมครั้งนี้ ${fmt(l.remainingLiters)} ลิตร (${fmt(l.remainingPercent)}%)${l.remainingValue != null ? ` ≈ ${fmt(l.remainingValue)} บาท` : ""}
         </span>
       </div>`
@@ -4153,16 +4983,123 @@
           }
         }
 
-        // --- ระบบแบ่งหน้าประวัติการเติม (Pagination) ---
+        // --- ประวัติการเติม: เติมตัวเลือกเดือนในดรอปดาวน์ แล้วแสดงรายการ
+        //     (แยกเป็นฟังก์ชันของตัวเองด้านล่าง เพื่อให้ค้นหา/กรองเดือน/เปลี่ยนหน้า
+        //     ทำงานได้เร็ว โดยไม่ต้องคำนวณกราฟทั้งหมดซ้ำทุกครั้ง) ---
+        populateLogMonthFilter();
+        renderLogHistory();
+      }
+
+      // สร้างรายชื่อเดือนใส่ดรอปดาวน์ตัวกรองในหน้า "ประวัติการเติม" ของหน้าสรุปผล
+      // ต่างจาก populateMainMonthDropdown() ตรงที่มีตัวเลือก "ทุกเดือน" เป็นค่าเริ่มต้น
+      function populateLogMonthFilter() {
+        const select = document.getElementById("logMonthFilter");
+        if (!select) return;
+
+        const monthsMap = {};
+        STATE.logs.forEach((l) => {
+          if (l.date && l.date.length >= 7) {
+            monthsMap[l.date.substring(0, 7)] = true;
+          }
+        });
+        const sortedMonths = Object.keys(monthsMap).sort().reverse();
+        const thaiMonths = [
+          "ม.ค.",
+          "ก.พ.",
+          "มี.ค.",
+          "เม.ย.",
+          "พ.ค.",
+          "มิ.ย.",
+          "ก.ค.",
+          "ส.ค.",
+          "ก.ย.",
+          "ต.ค.",
+          "พ.ย.",
+          "ธ.ค.",
+        ];
+
+        select.innerHTML =
+          `<option value="all">ทุกเดือน (${STATE.logs.length} รายการ)</option>` +
+          sortedMonths
+            .map((m) => {
+              const [yyyy, mm] = m.split("-");
+              const name = thaiMonths[parseInt(mm) - 1];
+              const thaiYear = parseInt(yyyy) + 543;
+              return `<option value="${m}">${name} ${thaiYear}</option>`;
+            })
+            .join("");
+
+        // คงค่าที่เลือกไว้เดิม ถ้าเดือนนั้นยังมีอยู่จริง ไม่งั้นกลับไป "ทุกเดือน"
+        if (
+          STATE.logMonthFilterVal !== "all" &&
+          !sortedMonths.includes(STATE.logMonthFilterVal)
+        ) {
+          STATE.logMonthFilterVal = "all";
+        }
+        select.value = STATE.logMonthFilterVal;
+      }
+
+      // กรองประวัติตามเดือนที่เลือก + คำค้นหา (ชนิดน้ำมัน, บันทึกช่วยจำ, วันที่, ยอดเงิน)
+      function getFilteredLogs() {
+        let logs = STATE.logs;
+
+        if (STATE.logMonthFilterVal && STATE.logMonthFilterVal !== "all") {
+          logs = logs.filter(
+            (l) => l.date && l.date.startsWith(STATE.logMonthFilterVal),
+          );
+        }
+
+        const q = (STATE.logSearchQuery || "").trim().toLowerCase();
+        if (q) {
+          logs = logs.filter((l) => {
+            const haystack = [
+              l.fuelType,
+              l.note,
+              l.date ? formatDateFull(l.date) : "",
+              l.totalCost,
+              l.liters,
+            ]
+              .filter((v) => v != null)
+              .join(" ")
+              .toLowerCase();
+            return haystack.includes(q);
+          });
+        }
+
+        return logs;
+      }
+
+      // วาดรายการ "ประวัติการเติม" (กรอง + ค้นหา + แบ่งหน้า) — เรียกแยกจากกราฟ
+      // เพื่อให้ตอบสนองไวแม้มีประวัติหลักร้อยหลักพันรายการ
+      function renderLogHistory() {
         const allCard = document.getElementById("allLogsCard");
+        const countEl = document.getElementById("logFilterCount");
+        if (!allCard) return;
+
         if (!STATE.logs.length) {
+          if (countEl) countEl.textContent = "";
           allCard.innerHTML =
             '<div class="empty-state"><div class="em-ic">📄</div><div class="em-t">ยังไม่มีประวัติ</div></div>';
           return;
         }
 
-        const ITEMS_PER_PAGE = 5; // กำหนดจำนวนรายการที่อยากให้แสดงต่อ 1 หน้า (แก้เลขได้)
-        const reversedLogs = [...STATE.logs].reverse();
+        const filteredLogs = getFilteredLogs();
+
+        if (countEl) {
+          countEl.textContent =
+            filteredLogs.length === STATE.logs.length
+              ? `ทั้งหมด ${fmt(filteredLogs.length)} รายการ`
+              : `พบ ${fmt(filteredLogs.length)} จาก ${fmt(STATE.logs.length)} รายการ`;
+        }
+
+        if (!filteredLogs.length) {
+          allCard.innerHTML =
+            '<div class="empty-state"><div class="em-ic">🔍</div><div class="em-t">ไม่พบรายการที่ค้นหา</div><div class="em-s">ลองเปลี่ยนคำค้น หรือเลือก "ทุกเดือน"</div></div>';
+          return;
+        }
+
+        const ITEMS_PER_PAGE = 8; // กำหนดจำนวนรายการที่อยากให้แสดงต่อ 1 หน้า (แก้เลขได้)
+        const reversedLogs = [...filteredLogs].reverse();
         const totalPages = Math.ceil(reversedLogs.length / ITEMS_PER_PAGE);
 
         // ป้องกันกรณีหน้าเกิน หรือน้อยกว่า 1
@@ -4195,6 +5132,20 @@
           `;
         }
         allCard.innerHTML = html;
+      }
+
+      // ค้นหาในประวัติการเติม (พิมพ์แล้วกรองทันที)
+      function onLogSearchInput(val) {
+        STATE.logSearchQuery = val;
+        STATE.logPage = 1;
+        renderLogHistory();
+      }
+
+      // เปลี่ยนเดือนที่กรองในประวัติการเติม
+      function onLogMonthFilterChange(val) {
+        STATE.logMonthFilterVal = val;
+        STATE.logPage = 1;
+        renderLogHistory();
       }
 
       // ---------------- Utils ----------------
@@ -4239,7 +5190,7 @@
       // ฟังก์ชันสำหรับกดปุ่มเปลี่ยนหน้าในประวัติการเติม
       function changeLogPage(direction) {
         STATE.logPage += direction;
-        renderStats(); // รีเฟรชหน้าสรุปผลใหม่
+        renderLogHistory(); // รีเฟรชแค่รายการประวัติ ไม่ต้องคำนวณกราฟใหม่
       }
 
       // 1. ฟังก์ชันสร้างรายชื่อเดือนใส่ดรอปดาวน์ของหน้าหลัก
@@ -4289,6 +5240,34 @@
           STATE.mainMonth = sortedMonths[0];
           select.value = STATE.mainMonth;
         }
+
+        STATE.mainMonthList = sortedMonths;
+        updateMonthNavButtons();
+      }
+
+      // ปุ่มลูกศรซ้าย/ขวาข้างดรอปดาวน์เดือน — sortedMonths เรียงใหม่ไปเก่า (index 0
+      // = เดือนล่าสุด) กด "ก่อนหน้า" (ลูกศรซ้าย) = ย้อนไปเดือนที่เก่ากว่า = index มากขึ้น
+      // กด "ถัดไป" (ลูกศรขวา) = ไปเดือนที่ใหม่กว่า = index น้อยลง
+      function stepMainMonth(direction) {
+        const list = STATE.mainMonthList || [];
+        const idx = list.indexOf(STATE.mainMonth);
+        if (idx === -1) return;
+        const newIdx = idx + direction;
+        if (newIdx < 0 || newIdx >= list.length) return;
+        STATE.mainMonth = list[newIdx];
+        const select = document.getElementById("mainMonthFilter");
+        if (select) select.value = STATE.mainMonth;
+        changeMainMonth(STATE.mainMonth);
+      }
+
+      // เปิด/ปิดปุ่มลูกศรตามตำแหน่งปัจจุบันในลิสต์เดือน กันกดเลยขอบ
+      function updateMonthNavButtons() {
+        const list = STATE.mainMonthList || [];
+        const idx = list.indexOf(STATE.mainMonth);
+        const prevBtn = document.getElementById("monthPrevBtn");
+        const nextBtn = document.getElementById("monthNextBtn");
+        if (prevBtn) prevBtn.disabled = idx === -1 || idx >= list.length - 1;
+        if (nextBtn) nextBtn.disabled = idx === -1 || idx <= 0;
       }
 
       // 2. ฟังก์ชันกรองและแสดงผลรายการประวัติบนหน้าหลัก
@@ -4373,6 +5352,234 @@
         STATE.mainMonth = val;
         renderMainLogs(); // สั่งอัปเดตรายการประวัติของเดือนนั้นบนหน้าหลัก
         updateHomeMonthSummary(); // สั่งอัปเดตยอดสรุปด้านบนให้ตรงกับเดือนที่เลือก
+        updateMonthNavButtons(); // อัปเดตสถานะปุ่มลูกศรซ้าย/ขวา
+        renderHomeChart(); // สั่งอัปเดตกราฟแนวโน้มให้ตรงกับเดือนที่เลือก
+      }
+
+      // ---------------- สีกราฟแนวโน้ม: กันสีแท่ง/เส้นกลืนกัน ----------------
+      // กราฟแท่ง (ค่าน้ำมัน) ใช้ --accent ซึ่งเปลี่ยนตามธีมสีที่ผู้ใช้เลือกได้ 8 แบบ
+      // ถ้ากราฟเส้น (กม./ลิตร) ใช้สีคงที่ตัวเดียว (เดิมใช้ --good) จะมีบางธีมที่สี
+      // ใกล้เคียงกับ accent มากจนแยกแท่ง/เส้นไม่ออก (เช่นธีม "เขียว" หรือ "ฟ้าอมเขียว"
+      // ที่ accent เป็นโทนเขียว-ฟ้าอยู่แล้ว ใกล้กับ --good ที่เป็นเขียวอมฟ้าเช่นกัน)
+      // ฟังก์ชันนี้คำนวณสีเส้นใหม่จาก accent ปัจจุบัน โดยหมุน hue 150° เพื่อการันตี
+      // ว่าสีทั้งสองจะตัดกันชัดเจนเสมอ ไม่ว่าจะเลือกธีมไหนก็ตาม
+      function hexToRgb(hex) {
+        const h = (hex || "").replace("#", "").trim();
+        const n = h.length === 3
+          ? h.split("").map((c) => c + c).join("")
+          : h;
+        const num = parseInt(n, 16);
+        return { r: (num >> 16) & 255, g: (num >> 8) & 255, b: num & 255 };
+      }
+      function rgbToHsl(r, g, b) {
+        r /= 255;
+        g /= 255;
+        b /= 255;
+        const max = Math.max(r, g, b),
+          min = Math.min(r, g, b);
+        let h,
+          s,
+          l = (max + min) / 2;
+        if (max === min) {
+          h = s = 0;
+        } else {
+          const d = max - min;
+          s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+          switch (max) {
+            case r:
+              h = (g - b) / d + (g < b ? 6 : 0);
+              break;
+            case g:
+              h = (b - r) / d + 2;
+              break;
+            default:
+              h = (r - g) / d + 4;
+          }
+          h /= 6;
+        }
+        return { h: h * 360, s: s * 100, l: l * 100 };
+      }
+      function hslToHex(h, s, l) {
+        h = ((h % 360) + 360) % 360;
+        s = Math.max(0, Math.min(100, s)) / 100;
+        l = Math.max(0, Math.min(100, l)) / 100;
+        const c = (1 - Math.abs(2 * l - 1)) * s;
+        const x = c * (1 - Math.abs(((h / 60) % 2) - 1));
+        const m = l - c / 2;
+        let r, g, b;
+        if (h < 60) [r, g, b] = [c, x, 0];
+        else if (h < 120) [r, g, b] = [x, c, 0];
+        else if (h < 180) [r, g, b] = [0, c, x];
+        else if (h < 240) [r, g, b] = [0, x, c];
+        else if (h < 300) [r, g, b] = [x, 0, c];
+        else [r, g, b] = [c, 0, x];
+        const toHex = (v) =>
+          Math.round((v + m) * 255)
+            .toString(16)
+            .padStart(2, "0");
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+      }
+      // คืนสีเส้นที่ตัดกับสีแท่ง (accent) ปัจจุบันเสมอ ไม่ว่าจะเลือกธีมสีไหน
+      function getContrastLineColor(accentHex) {
+        try {
+          const { r, g, b } = hexToRgb(accentHex);
+          const hsl = rgbToHsl(r, g, b);
+          const newHue = hsl.h + 150; // หมุน 150° ให้ห่างพอสมควรในทุกธีม
+          const s = Math.max(55, Math.min(hsl.s, 80));
+          const l = Math.max(48, Math.min(hsl.l, 62));
+          return hslToHex(newHue, s, l);
+        } catch (e) {
+          return "#22D3B0"; // เผื่อ parse สีไม่ได้ ใช้ค่าเดิมสำรอง
+        }
+      }
+
+      // ---------------- หน้าหลัก: กราฟแนวโน้มของเดือนที่เลือก ----------------
+      // ผูกกับ STATE.mainMonth (เดือนที่เลือกจากแถบด้านบน) — แสดง "ทุกรายการ"
+      // ที่เติมในเดือนนั้น (ไม่ใช่แค่ค่าเฉลี่ยรวม) แท่ง = ค่าน้ำมันแต่ละครั้ง,
+      // เส้น = กม./ลิตร ของแต่ละครั้ง ให้เห็นความผันผวนรายรายการชัดเจน
+      function renderHomeChart() {
+        const canvas = document.getElementById("homeTrendChart");
+        const card = document.getElementById("homeChartCard");
+        const emptyEl = document.getElementById("homeChartEmpty");
+        const legendEl = document.getElementById("homeChartLegend");
+        const titleEl = document.getElementById("homeChartTitle");
+        const subEl = document.getElementById("homeChartSub");
+        if (!canvas || typeof Chart === "undefined") return;
+
+        const carLogs = STATE.logs.filter(
+          (l) => l.carId === STATE.activeCarId,
+        );
+
+        if (!carLogs.length) {
+          if (card) card.style.display = "none";
+          return;
+        }
+        if (card) card.style.display = "block";
+
+        const thaiMonthsShort = [
+          "ม.ค.",
+          "ก.พ.",
+          "มี.ค.",
+          "เม.ย.",
+          "พ.ค.",
+          "มิ.ย.",
+          "ก.ค.",
+          "ส.ค.",
+          "ก.ย.",
+          "ต.ค.",
+          "พ.ย.",
+          "ธ.ค.",
+        ];
+
+        // อัปเดตหัวข้อการ์ดให้ตรงกับเดือนที่เลือกจากแถบด้านบน
+        if (STATE.mainMonth && STATE.mainMonth.includes("-")) {
+          const [yyyy, mm] = STATE.mainMonth.split("-");
+          const monthName = thaiMonthsShort[parseInt(mm) - 1];
+          const thaiYear = parseInt(yyyy) + 543;
+          if (titleEl)
+            titleEl.textContent = `แนวโน้มเดือน ${monthName} ${thaiYear}`;
+        }
+        if (subEl) subEl.textContent = "ค่าน้ำมัน & กม./ลิตร ต่อรายการ";
+
+        // กรองเฉพาะรายการของ "เดือนที่เลือก" — STATE.logs เรียงเก่า→ใหม่อยู่แล้ว
+        // (จาก enrichLogs) จึงกราฟจะไล่ตามลำดับเวลาโดยอัตโนมัติ
+        const monthLogs = carLogs.filter(
+          (l) => l.date && l.date.startsWith(STATE.mainMonth),
+        );
+
+        if (!monthLogs.length) {
+          canvas.style.display = "none";
+          if (legendEl) legendEl.style.display = "none";
+          if (emptyEl) emptyEl.style.display = "block";
+          if (STATE.homeTrendChart) {
+            STATE.homeTrendChart.destroy();
+            STATE.homeTrendChart = null;
+          }
+          return;
+        }
+        canvas.style.display = "block";
+        if (legendEl) legendEl.style.display = "flex";
+        if (emptyEl) emptyEl.style.display = "none";
+
+        // แกน X = วันที่ของแต่ละรายการ (แค่เลขวัน เพราะอยู่ในเดือนเดียวกันหมดแล้ว)
+        const labels = monthLogs.map((l) => String(new Date(l.date).getDate()));
+        const costData = monthLogs.map((l) => Number(l.totalCost) || 0);
+        const kmlData = monthLogs.map((l) => (l.kml != null ? l.kml : null));
+
+        const gridColor = getComputedStyle(document.body).getPropertyValue(
+          "--border",
+        );
+        const textColor = getComputedStyle(document.body).getPropertyValue(
+          "--text-muted",
+        );
+        const accentColor = getComputedStyle(document.body)
+          .getPropertyValue("--accent")
+          .trim();
+        // สีเส้น "กม./ลิตร" คำนวณสดจาก accent ปัจจุบัน ไม่ใช้ --good ตรง ๆ เพราะ
+        // บางธีม (เขียว/ฟ้าอมเขียว) สี accent จะใกล้เคียง --good มากจนแยกไม่ออก
+        const lineColor = getContrastLineColor(accentColor);
+        // อัปเดตจุดสีใน legend ให้ตรงกับสีเส้นที่คำนวณสดนี้ด้วย ไม่งั้น legend
+        // (ที่ผูกกับ --good แบบ hardcode ใน HTML) จะไม่ตรงกับสีจริงในกราฟ
+        const legendLineDot = document.getElementById("homeChartLegendLineDot");
+        if (legendLineDot) legendLineDot.style.background = lineColor;
+        Chart.defaults.font.family = "'Inter',sans-serif";
+        Chart.defaults.color = textColor;
+
+        if (STATE.homeTrendChart) STATE.homeTrendChart.destroy();
+        STATE.homeTrendChart = new Chart(canvas, {
+          data: {
+            labels,
+            datasets: [
+              {
+                type: "bar",
+                label: "ค่าน้ำมัน (฿)",
+                data: costData,
+                backgroundColor: accentColor,
+                borderRadius: 6,
+                yAxisID: "y",
+                order: 2,
+              },
+              {
+                type: "line",
+                label: "กม./ลิตร",
+                data: kmlData,
+                borderColor: lineColor,
+                backgroundColor: lineColor,
+                tension: 0.35,
+                pointRadius: 4,
+                pointBackgroundColor: lineColor,
+                yAxisID: "y1",
+                order: 1,
+                spanGaps: true,
+              },
+            ],
+          },
+          options: {
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  title: (items) =>
+                    formatDateFull(monthLogs[items[0].dataIndex].date),
+                },
+              },
+            },
+            interaction: { mode: "index", intersect: false },
+            scales: {
+              x: { grid: { display: false } },
+              y: {
+                position: "left",
+                grid: { color: gridColor },
+                ticks: { callback: (v) => fmt(v) },
+              },
+              y1: {
+                position: "right",
+                grid: { display: false },
+                ticks: { callback: (v) => fmt(v) },
+              },
+            },
+          },
+        });
       }
     </script>
   </body>
