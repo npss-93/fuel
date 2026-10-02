@@ -746,9 +746,6 @@
               <button class="btn btn-outline" id="useFbBtn" style="margin-top: 10px; display: none" onclick="activateSource('firebase')">
                 ใช้ Firebase เป็นแหล่งข้อมูล
               </button>
-              <button class="btn btn-outline" id="migrateFbBtn" style="margin-top: 10px; display: none" onclick="migrateSheetToFirebase()">
-                ย้ายข้อมูลจาก Google Sheet มา Firebase
-              </button>
               <div class="hint" id="fbStatusHint">ยังไม่ได้เชื่อมต่อ Firebase</div>
 
               <details style="margin-top: 14px">
@@ -767,6 +764,29 @@
                   </li>
                 </ol>
               </details>
+            </div>
+          </div>
+
+          <div class="section-title">ซิงค์ข้อมูลระหว่างแหล่งเก็บ</div>
+          <div class="card">
+            <div class="ts" style="color: var(--text-muted); font-size: 13px; line-height: 1.6; margin-bottom: 14px">
+              ทำให้อีกแหล่งตรงกับแหล่งที่คุณใช้งานอยู่ตอนนี้ ข้อมูลต้นทางจะไม่ถูกแก้ไขหรือลบ
+              (อยากกลับทิศทาง ให้สลับแหล่งข้อมูลที่ใช้งานด้านบนก่อน)
+            </div>
+            <label style="display: flex; gap: 10px; align-items: flex-start; margin-bottom: 14px; cursor: pointer">
+              <input type="checkbox" id="copyMirrorChk" checked style="margin-top: 3px; flex-shrink: 0" />
+              <span style="font-size: 13px; line-height: 1.6">
+                <b>ทำให้ปลายทางตรงกับต้นทางเป๊ะ</b>
+                <span style="display: block; color: var(--text-muted); font-size: 12px">
+                  รายการที่ถูกลบที่ต้นทางจะถูกลบที่ปลายทางด้วย ถ้าไม่ติ๊กจะแค่เพิ่ม/เขียนทับ ไม่ลบอะไรที่ปลายทาง
+                </span>
+              </span>
+            </label>
+            <button class="btn btn-outline" id="syncBtn" onclick="syncData()">
+              ซิงค์ข้อมูล
+            </button>
+            <div class="hint" id="copyStatusHint" style="line-height: 1.6">
+              ก่อนคัดลอกจะแสดงสรุปจำนวนที่จะเพิ่ม / เขียนทับ / ลบ ให้ตรวจสอบและกดยืนยันก่อนเสมอ
             </div>
           </div>
 
@@ -1965,7 +1985,29 @@
           }
           $("useFbBtn").style.display =
             STATE.fbUrl && active !== "firebase" ? "block" : "none";
-          $("migrateFbBtn").style.display = STATE.fbUrl ? "block" : "none";
+        }
+
+        // ---- ปุ่มคัดลอกข้อมูล: ต้องเชื่อมต่อทั้งสองแหล่งก่อน ----
+        const both = !!(STATE.sheetId && STATE.fbUrl);
+        const dirNames = { sheet: "Google Sheet", firebase: "Firebase" };
+        const hasActive = active === "sheet" || active === "firebase";
+        if ($("syncBtn")) $("syncBtn").disabled = !both || !hasActive || copyBusy;
+        if ($("syncBtn")) {
+          const shortNames = { sheet: "Google Sheet", firebase: "Firebase" };
+          $("syncBtn").textContent = hasActive
+            ? `ซิงค์ข้อมูล (${shortNames[active]} → ${shortNames[active === "sheet" ? "firebase" : "sheet"]})`
+            : "ซิงค์ข้อมูล";
+        }
+        const ch = $("copyStatusHint");
+        if (ch && !copyBusy) {
+          if (!both) {
+            if (!ch.dataset.needBoth) ch.dataset.original = ch.textContent;
+            ch.dataset.needBoth = "1";
+            ch.textContent = "ต้องเชื่อมต่อทั้ง Google Sheet และ Firebase ก่อน จึงจะคัดลอกข้อมูลได้";
+          } else if (ch.dataset.needBoth) {
+            ch.textContent = ch.dataset.original || "";
+            delete ch.dataset.needBoth;
+          }
         }
       }
 
@@ -2083,55 +2125,86 @@
         toast("ยกเลิกการเชื่อมต่อ Firebase แล้ว");
       }
 
-      // คัดลอกข้อมูลรถ+ประวัติทั้งหมดจาก Google Sheet ไป Firebase
-      // ใช้ id เดิม จึงรันซ้ำได้โดยไม่เกิดข้อมูลซ้ำ และไม่ลบอะไรในชีต
-      async function migrateSheetToFirebase() {
-        if (!STATE.fbUrl) return;
-        let sid = STATE.sheetId;
-        if (!sid) {
-          const raw = prompt("วางลิงก์ Google Sheet ที่ต้องการย้ายข้อมูลมา Firebase");
-          if (!raw) return;
-          sid = extractSheetId(raw.trim());
-          if (!sid) {
-            toast("รูปแบบลิงก์ Google Sheet ไม่ถูกต้อง");
-            return;
-          }
-        }
-        if (
-          !confirm(
-            "คัดลอกข้อมูลรถและประวัติการเติมทั้งหมดจาก Google Sheet ไปยัง Firebase?\n(ไม่ลบข้อมูลในชีต และกดซ้ำได้โดยไม่เกิดข้อมูลซ้ำ)",
-          )
-        )
-          return;
+      // ---------------- คัดลอกข้อมูลระหว่าง Google Sheet <-> Firebase ----------------
+      // ทั้งสองทิศทางเป็น "upsert ตาม id": id เดิมถูกเขียนทับ id ใหม่ถูกเพิ่ม และ
+      // ไม่ลบอะไรที่ปลายทาง จึงกดซ้ำได้โดยไม่เกิดข้อมูลซ้ำ
+      let copyBusy = false;
+      const COPY_CHUNK_LOGS = 300; // ก้อนละไม่เกินนี้ กัน request ใหญ่/ช้าเกินจนหมดเวลา
 
-        const btn = document.getElementById("migrateFbBtn");
-        const hint = document.getElementById("fbStatusHint");
-        btn.disabled = true;
+      function setCopyBusy(busy) {
+        copyBusy = busy;
+        updateSheetConnectionUI();
+      }
+      function setCopyHint(text) {
+        const el = document.getElementById("copyStatusHint");
+        if (el) {
+          delete el.dataset.needBoth;
+          el.textContent = text;
+        }
+      }
+      function validFbKey(k) {
+        return /^[^.$#\[\]\/]+$/.test(String(k || ""));
+      }
+
+      // ปุ่มเดียว: ทิศทางตามแหล่งข้อมูลที่ใช้งานอยู่ (ต้นทาง) ไปยังอีกแหล่ง (ปลายทาง)
+      // ขั้นตอนเทียบข้อมูล + สรุปจำนวนให้ยืนยัน อยู่ในฟังก์ชัน copy... ด้านล่างอยู่แล้ว
+      function syncData() {
+        if (STATE.dataSource === "firebase") return copyFirebaseToSheet();
+        if (STATE.dataSource === "sheet") return copySheetToFirebase();
+      }
+
+      const isMirror = () => {
+        const el = document.getElementById("copyMirrorChk");
+        return !!(el && el.checked);
+      };
+      // สรุปจำนวนเป็นข้อความ จากรายการ key แบบ "cars/..." และ "logs/..."
+      function fmtKeyCounts(keys) {
+        let c = 0, l = 0;
+        keys.forEach((k) => (k.startsWith("cars/") ? c++ : l++));
+        return `รถ ${c} คัน, ประวัติ ${l} รายการ`;
+      }
+      // key ทั้งหมดที่มีอยู่บน Firebase ตอนนี้ ในรูป cars/{id} และ logs/{carId}/{id}
+      async function fbExistingKeys() {
+        const [carsObj, logsObj] = await Promise.all([
+          fbRequest("GET", "cars"),
+          fbRequest("GET", "logs"),
+        ]);
+        const keys = new Set();
+        Object.keys(carsObj || {}).forEach((id) => keys.add(`cars/${id}`));
+        Object.entries(logsObj || {}).forEach(([cid, byId]) =>
+          Object.keys(byId || {}).forEach((id) => keys.add(`logs/${cid}/${id}`)),
+        );
+        return keys;
+      }
+
+      // หมายเหตุสำคัญ (ทั้งสองทิศทาง): ถ้าต้นทาง "ว่างเปล่า" จะไม่คัดลอก/ไม่ลบอะไรเลย
+      // กันกรณีอ่านต้นทางพลาดแล้วโหมด "ตรงกับต้นทาง" ไปล้างข้อมูลปลายทางทิ้งทั้งหมด
+      async function copySheetToFirebase() {
+        if (copyBusy || !STATE.sheetId || !STATE.fbUrl) return;
+        const mirror = isMirror();
+        setCopyBusy(true);
         try {
-          hint.textContent = "⏳ กำลังอ่านข้อมูลจาก Google Sheet...";
+          setCopyHint("⏳ กำลังอ่านข้อมูลจาก Google Sheet...");
           const [cars, logs] = await Promise.all([
-            fetchCSV("Cars", sid),
-            fetchCSV("FuelLogs", sid),
+            fetchCSV("Cars", STATE.sheetId),
+            fetchCSV("FuelLogs", STATE.sheetId),
           ]);
 
-          const validKey = (k) => /^[^.$#\[\]\/]+$/.test(String(k || ""));
           const num = (v) => Number(v) || 0;
           const updates = {};
-          let nCars = 0, nLogs = 0, skipped = 0;
-
+          let skipped = 0;
           cars.forEach((c) => {
             if (!c.id) return; // แถวว่าง
-            if (!validKey(c.id)) { skipped++; return; }
+            if (!validFbKey(c.id)) { skipped++; return; }
             updates[`cars/${c.id}`] = {
               id: c.id, name: c.name || "", brand: c.brand || "", model: c.model || "",
               year: c.year || "", fuelType: c.fuelType || "", tankSize: num(c.tankSize),
               color: c.color || "", icon: c.icon || "", createdAt: c.createdAt || "",
             };
-            nCars++;
           });
           logs.forEach((l) => {
             if (!l.id) return;
-            if (!validKey(l.id) || !validKey(l.carId)) { skipped++; return; }
+            if (!validFbKey(l.id) || !validFbKey(l.carId)) { skipped++; return; }
             updates[`logs/${l.carId}/${l.id}`] = {
               id: l.id, carId: l.carId, date: l.date || "", odometer: num(l.odometer),
               fuelType: l.fuelType || "", fuelIcon: l.fuelIcon || "",
@@ -2140,34 +2213,149 @@
               isFullTank: String(l.isFullTank).toUpperCase() === "TRUE",
               note: l.note || "", createdAt: l.createdAt || "",
             };
-            nLogs++;
           });
 
-          const keys = Object.keys(updates);
-          if (!keys.length) {
-            hint.textContent = "ไม่พบข้อมูลในชีตที่จะย้าย";
-            toast("ไม่พบข้อมูลในชีตที่จะย้าย");
+          const srcKeys = Object.keys(updates);
+          if (!srcKeys.length) {
+            setCopyHint("ไม่พบข้อมูลใน Google Sheet จึงไม่ได้คัดลอกหรือลบอะไรที่ Firebase");
+            toast("ไม่พบข้อมูลใน Google Sheet");
             return;
           }
+
+          setCopyHint("⏳ กำลังเทียบกับข้อมูลบน Firebase...");
+          const destKeys = await fbExistingKeys();
+          const srcSet = new Set(srcKeys);
+          const toAdd = srcKeys.filter((k) => !destKeys.has(k));
+          const toUpd = srcKeys.filter((k) => destKeys.has(k));
+          const toDel = mirror ? [...destKeys].filter((k) => !srcSet.has(k)) : [];
+
+          const msg =
+            "คัดลอกจาก Google Sheet ไปยัง Firebase\n\n" +
+            `• เพิ่มใหม่: ${fmtKeyCounts(toAdd)}\n` +
+            `• เขียนทับ: ${fmtKeyCounts(toUpd)}\n` +
+            (mirror ? `• ลบที่ Firebase (ไม่มีใน Sheet แล้ว): ${fmtKeyCounts(toDel)}\n` : "") +
+            "\nข้อมูลใน Google Sheet จะไม่ถูกแก้ไข ดำเนินการต่อหรือไม่?";
+          if (!confirm(msg)) {
+            setCopyHint("ยกเลิกการคัดลอกแล้ว");
+            return;
+          }
+
+          const all = { ...updates };
+          toDel.forEach((k) => (all[k] = null)); // null = ลบ (multi-path update)
+          const keys = Object.keys(all);
           const CHUNK = 400;
           for (let i = 0; i < keys.length; i += CHUNK) {
             const part = {};
-            keys.slice(i, i + CHUNK).forEach((k) => (part[k] = updates[k]));
-            hint.textContent = `⏳ กำลังอัปโหลด ${Math.min(i + CHUNK, keys.length)}/${keys.length} รายการ...`;
+            keys.slice(i, i + CHUNK).forEach((k) => (part[k] = all[k]));
+            setCopyHint(`⏳ กำลังเขียนไป Firebase ${Math.min(i + CHUNK, keys.length)}/${keys.length}...`);
             await fbRequest("PATCH", "", part);
           }
 
-          const summary = `✅ ย้ายข้อมูลสำเร็จ: รถ ${nCars} คัน, ประวัติการเติม ${nLogs} รายการ` +
-            (skipped ? ` (ข้าม ${skipped} แถวที่ id ไม่ถูกต้อง)` : "");
-          toast("ย้ายข้อมูลสำเร็จ");
+          toast("คัดลอกไป Firebase สำเร็จ");
           if (STATE.dataSource === "firebase") await bootstrap(true);
-          hint.textContent = summary;
+          setCopyHint(
+            `✅ คัดลอกไป Firebase สำเร็จ: เพิ่ม ${toAdd.length}, เขียนทับ ${toUpd.length}` +
+              (mirror ? `, ลบ ${toDel.length}` : "") +
+              (skipped ? ` (ข้าม ${skipped} แถวที่ id ไม่ถูกต้อง)` : ""),
+          );
         } catch (err) {
           const msg = friendlyErrorMessage(err);
-          hint.textContent = "⚠️ ย้ายข้อมูลไม่สำเร็จ: " + msg;
-          toast("ย้ายข้อมูลไม่สำเร็จ: " + msg);
+          setCopyHint("⚠️ คัดลอกไม่สำเร็จ: " + msg);
+          toast("คัดลอกไม่สำเร็จ: " + msg);
         } finally {
-          btn.disabled = false;
+          setCopyBusy(false);
+        }
+      }
+
+      async function copyFirebaseToSheet() {
+        if (copyBusy || !STATE.sheetId || !STATE.fbUrl) return;
+        const mirror = isMirror();
+        setCopyBusy(true);
+        try {
+          setCopyHint("⏳ กำลังอ่านข้อมูลจาก Firebase...");
+          const [carsObj, logsObj] = await Promise.all([
+            fbRequest("GET", "cars"),
+            fbRequest("GET", "logs"),
+          ]);
+          const cars = Object.values(carsObj || {});
+          // logs เก็บแบบซ้อน {carId: {logId: log}} -> แปลงเป็นลิสต์เรียบ
+          const logs = [];
+          Object.entries(logsObj || {}).forEach(([carId, byId]) => {
+            Object.entries(byId || {}).forEach(([logId, l]) => {
+              logs.push({ ...l, id: l.id || logId, carId: l.carId || carId });
+            });
+          });
+          if (!cars.length && !logs.length) {
+            setCopyHint("ไม่พบข้อมูลใน Firebase จึงไม่ได้คัดลอกหรือลบอะไรที่ Google Sheet");
+            toast("ไม่พบข้อมูลใน Firebase");
+            return;
+          }
+
+          setCopyHint("⏳ กำลังเทียบกับข้อมูลใน Google Sheet...");
+          const [destCars, destLogs] = await Promise.all([
+            fetchCSV("Cars", STATE.sheetId),
+            fetchCSV("FuelLogs", STATE.sheetId),
+          ]);
+          const dCar = new Set(destCars.map((r) => r.id).filter(Boolean));
+          const dLog = new Set(destLogs.map((r) => r.id).filter(Boolean));
+          const sCar = new Set(cars.map((c) => c.id));
+          const sLog = new Set(logs.map((l) => l.id));
+          const cnt = (arr, pred) => arr.filter(pred).length;
+          const addC = cnt(cars, (c) => !dCar.has(c.id)), updC = cars.length - addC;
+          const addL = cnt(logs, (l) => !dLog.has(l.id)), updL = logs.length - addL;
+          const delC = mirror ? [...dCar].filter((id) => !sCar.has(id)).length : 0;
+          const delL = mirror ? [...dLog].filter((id) => !sLog.has(id)).length : 0;
+
+          const msg =
+            "คัดลอกจาก Firebase ไปยัง Google Sheet\n\n" +
+            `• เพิ่มใหม่: รถ ${addC} คัน, ประวัติ ${addL} รายการ\n` +
+            `• เขียนทับ: รถ ${updC} คัน, ประวัติ ${updL} รายการ\n` +
+            (mirror ? `• ลบที่ Sheet (ไม่มีใน Firebase แล้ว): รถ ${delC} คัน, ประวัติ ${delL} รายการ\n` : "") +
+            "\nข้อมูลใน Firebase จะไม่ถูกแก้ไข ดำเนินการต่อหรือไม่?";
+          if (!confirm(msg)) {
+            setCopyHint("ยกเลิกการคัดลอกแล้ว");
+            return;
+          }
+
+          // ส่งเป็นก้อน: ก้อนแรกพ่วงข้อมูลรถทั้งหมดไปด้วย
+          const total = cars.length + logs.length;
+          let done = 0;
+          const onRetry = (attempt, max) =>
+            setCopyHint(`⏳ เครือข่ายไม่เสถียร กำลังลองใหม่ (${attempt}/${max})...`);
+          for (let i = 0; i === 0 || i < logs.length; i += COPY_CHUNK_LOGS) {
+            const part = {
+              cars: i === 0 ? cars : [],
+              logs: logs.slice(i, i + COPY_CHUNK_LOGS),
+            };
+            await apiPostRaw("importData", STATE.sheetId, part, onRetry);
+            done += part.cars.length + part.logs.length;
+            setCopyHint(`⏳ กำลังเขียนไป Google Sheet ${done}/${total} รายการ...`);
+          }
+          // ลบส่วนเกินหลังเขียนครบทุกก้อนแล้วเท่านั้น (ถ้าพังก่อนถึงตรงนี้ ข้อมูลแค่เกิน ไม่หาย)
+          if (mirror && delC + delL > 0) {
+            setCopyHint("⏳ กำลังลบรายการที่ไม่มีใน Firebase แล้ว...");
+            await apiPostRaw(
+              "pruneData",
+              STATE.sheetId,
+              { carIds: [...sCar], logIds: [...sLog] },
+              onRetry,
+            );
+          }
+
+          toast("คัดลอกไป Google Sheet สำเร็จ");
+          if (STATE.dataSource === "sheet") await bootstrap(true);
+          setCopyHint(
+            `✅ คัดลอกไป Google Sheet สำเร็จ: เพิ่ม ${addC + addL}, เขียนทับ ${updC + updL}` +
+              (mirror ? `, ลบ ${delC + delL}` : ""),
+          );
+        } catch (err) {
+          let msg = friendlyErrorMessage(err);
+          if (/Unknown POST action/i.test(msg))
+            msg = "Apps Script ยังเป็นเวอร์ชันเก่า ให้วาง Code.gs ใหม่แล้ว Deploy > Manage deployments > แก้ไข > New version";
+          setCopyHint("⚠️ คัดลอกไม่สำเร็จ: " + msg);
+          toast("คัดลอกไม่สำเร็จ: " + msg);
+        } finally {
+          setCopyBusy(false);
         }
       }
 
