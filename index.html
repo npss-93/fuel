@@ -25,2065 +25,7 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
-    <style>
-      /* ============================================================
-   FULL FUEL — Design tokens
-   Signature: semicircle "fuel gauge" dial (แดง→ส้ม→เขียว)
-   ============================================================ */
-      :root {
-        --accent: #ff7a29;
-        --accent-2: #ffb020;
-        --good: #22d3b0;
-        --warn: #ffb020;
-        --bad: #ff5470;
-        --font-display: "Space Grotesk", system-ui, sans-serif;
-        --font-body: "Inter", system-ui, sans-serif;
-        --font-mono: "JetBrains Mono", ui-monospace, monospace;
-        --radius-lg: 20px;
-        --radius-md: 14px;
-        --radius-sm: 10px;
-        --nav-h: 72px;
-        --safe-b: env(safe-area-inset-bottom, 0px);
-      }
-      /* ---- Color themes (accent) ---- */
-      [data-color-theme="orange"] {
-        --accent: #ff7a29;
-        --accent-2: #ffb020;
-      }
-      [data-color-theme="blue"] {
-        --accent: #4f8dff;
-        --accent-2: #5be3ff;
-      }
-      [data-color-theme="purple"] {
-        --accent: #9d6bff;
-        --accent-2: #d78bff;
-      }
-      [data-color-theme="green"] {
-        --accent: #22c07a;
-        --accent-2: #8ee06b;
-      }
-      [data-color-theme="pink"] {
-        --accent: #ff5c93;
-        --accent-2: #ff9ad1;
-      }
-      [data-color-theme="red"] {
-        --accent: #ef4444;
-        --accent-2: #ff8a5c;
-      }
-      [data-color-theme="teal"] {
-        --accent: #14b8a6;
-        --accent-2: #67e8f9;
-      }
-      [data-color-theme="yellow"] {
-        --accent: #eab308;
-        --accent-2: #fde047;
-      }
-      [data-theme="dark"] {
-        --bg: #12141a;
-        --bg-elev: #181b23;
-        --surface: #1d212b;
-        --surface-2: #292e3b;
-        --border: #2c3140;
-        --text: #f3f1ea;
-        --text-muted: #9299ac;
-        --text-dim: #5c6377;
-        --shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
-      }
-      [data-theme="light"] {
-        --bg: #eff2f6;
-        --bg-elev: #f7f9fb;
-        --surface: #ffffff;
-        --surface-2: #f2f4f8;
-        --border: #e1e5ec;
-        --text: #171a21;
-        --text-muted: #666e7e;
-        --text-dim: #9aa1b0;
-        --shadow: 0 8px 24px rgba(30, 40, 60, 0.08);
-      }
-      * {
-        box-sizing: border-box;
-        -webkit-tap-highlight-color: transparent;
-      }
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      body {
-        background: var(--bg);
-        color: var(--text);
-        font-family: var(--font-body);
-        min-height: 100vh;
-        overscroll-behavior-y: none;
-        transition:
-          background 0.25s ease,
-          color 0.25s ease;
-      }
-      h1,
-      h2,
-      h3,
-      .display {
-        font-family: var(--font-display);
-        letter-spacing: -0.01em;
-      }
-      .mono {
-        font-family: var(--font-mono);
-        font-variant-numeric: tabular-nums;
-      }
-      button {
-        font-family: inherit;
-      }
-      a {
-        color: inherit;
-      }
-      ::selection {
-        background: var(--accent);
-        color: #12141a;
-      }
-
-      /* ---------- App shell ---------- */
-      #app {
-        max-width: 560px;
-        margin: 0 auto;
-        min-height: 100vh;
-        position: relative;
-        padding-bottom: calc(var(--nav-h) + var(--safe-b) + 16px);
-      }
-      .topbar {
-        position: sticky;
-        top: 0;
-        z-index: 20;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        padding: 14px 18px 10px;
-        background: linear-gradient(180deg, var(--bg) 70%, transparent);
-        backdrop-filter: blur(6px);
-      }
-      .brand {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-      .brand-mark {
-        width: 38px;
-        height: 38px;
-        border-radius: 11px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 19px;
-        box-shadow: 0 4px 20px
-          color-mix(in srgb, var(--accent) 35%, transparent);
-        flex-shrink: 0;
-      }
-      .brand-text .t1 {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 17px;
-        line-height: 1.1;
-      }
-      .brand-text .t2 {
-        font-size: 11px;
-        color: var(--text-muted);
-      }
-      .top-actions {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .icon-btn {
-        width: 38px;
-        height: 38px;
-        border-radius: 12px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 16px;
-        transition:
-          transform 0.15s ease,
-          background 0.2s;
-      }
-      .icon-btn:active {
-        transform: scale(0.92);
-      }
-
-      .car-chip {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        border-radius: 999px;
-        padding: 6px 12px 6px 6px;
-        cursor: pointer;
-        max-width: 100%;
-      }
-      .car-chip .dot {
-        width: 26px;
-        height: 26px;
-        border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        flex-shrink: 0;
-      }
-      .car-chip .name {
-        font-weight: 600;
-        font-size: 13px;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        max-width: 120px;
-      }
-      .car-chip .chev {
-        color: var(--text-dim);
-        font-size: 10px;
-      }
-
-      main {
-        padding: 4px 18px 18px;
-      }
-      .view {
-        display: none;
-        animation: fadeIn 0.25s ease;
-      }
-      .view.active {
-        display: block;
-      }
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: translateY(6px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .section-title {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        margin: 22px 0 10px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-      }
-      .section-title .link {
-        font-size: 12px;
-        text-transform: none;
-        letter-spacing: 0;
-        color: var(--accent);
-        font-weight: 600;
-        cursor: pointer;
-      }
-
-      .card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 18px;
-        box-shadow: var(--shadow);
-      }
-      .card + .card {
-        margin-top: 12px;
-      }
-
-      /* ---------- Bottom nav ---------- */
-      .bottom-nav {
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 3px;
-        z-index: 30;
-        display: flex;
-        justify-content: center;
-        padding-bottom: var(--safe-b);
-        pointer-events: none;
-      }
-      .bottom-nav-inner {
-        position: relative; /* จุดอ้างอิงตำแหน่งของ .nav-pill ที่ไถลตามแท็บ */
-        pointer-events: all;
-        max-width: 460px;
-        width: 100%;
-        margin: 0 14px;
-        height: var(--nav-h);
-        background: var(--bg-elev);
-        border: 1px solid var(--border);
-        border-radius: 24px;
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        box-shadow: var(--shadow);
-        padding: 0 4px;
-      }
-      /* "pill" พื้นหลังที่ไถลไปหาแท็บที่ active — ใช้ bounce easing เดียวกับ
-         .nav-fab เพื่อให้บุคลิก "เด้งสนุกๆ" เป็นเรื่องเดียวกันทั้งแถบเมนู
-         ตำแหน่ง/ความกว้างคำนวณสดด้วย JS (updateNavPill) เพราะปุ่มมี FAB คั่นกลาง
-         ทำให้ระยะห่างแต่ละปุ่มไม่เท่ากัน คำนวณด้วย CSS ล้วนไม่ได้ */
-      .nav-pill {
-        position: absolute;
-        top: 6px;
-        bottom: 6px;
-        left: 0;
-        width: 0;
-        border-radius: 14px;
-        background: color-mix(in srgb, var(--accent) 16%, transparent);
-        pointer-events: none;
-        z-index: 0;
-        transition:
-          transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-          width 0.45s cubic-bezier(0.34, 1.56, 0.64, 1),
-          background 0.3s ease;
-      }
-      .nav-btn {
-        position: relative;
-        z-index: 1; /* อยู่เหนือ .nav-pill เสมอ */
-        background: none;
-        border: none;
-        color: var(--text-dim);
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-        font-size: 10px;
-        font-weight: normal;
-        padding: 10px 10px;
-        border-radius: 14px;
-        cursor: pointer;
-        transition:
-          color 0.25s ease,
-          scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .nav-btn .ic {
-        font-size: 18px;
-        display: inline-block;
-        transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .nav-btn.active {
-        color: var(--accent);
-        font-weight: 900;
-        scale: 1.1;
-      }
-      .nav-btn.active .ic {
-        transform: translateY(-1px) scale(1.08);
-      }
-      /* แต่ละไอคอนมีลูกเล่นเคลื่อนไหวของตัวเอง เล่นตอนแท็บนั้นกลายเป็น active
-         (ใช้ bounce easing เดียวกับ .nav-pill/.nav-fab ให้บุคลิกเข้าชุดกัน) */
-      .nav-btn .ic i {
-        display: inline-block;
-        transform-origin: 50% 50%;
-      }
-      @keyframes navIconPopHome {
-        0% {
-          transform: scale(0.5) translateY(7px) rotate(-10deg);
-        }
-        55% {
-          transform: scale(1.25) translateY(-4px) rotate(6deg);
-        }
-        78% {
-          transform: scale(0.92) translateY(1px) rotate(-3deg);
-        }
-        100% {
-          transform: scale(1) translateY(0) rotate(0deg);
-        }
-      }
-      .nav-btn.active .ic-home {
-        animation: navIconPopHome 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes navIconDriveIn {
-        0% {
-          transform: translateX(-10px) scale(0.7);
-          opacity: 0.4;
-        }
-        60% {
-          transform: translateX(2px) scale(1.12);
-          opacity: 1;
-        }
-        100% {
-          transform: translateX(0) scale(1);
-        }
-      }
-      @keyframes navIconIdleBob {
-        0%,
-        100% {
-          transform: translateY(0);
-        }
-        50% {
-          transform: translateY(-1.5px);
-        }
-      }
-      .nav-btn.active .ic-car {
-        animation:
-          navIconDriveIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
-          navIconIdleBob 1.6s ease-in-out 0.5s infinite;
-      }
-      @keyframes navIconGrowBars {
-        0% {
-          transform: scaleY(0.3) translateY(3px);
-          opacity: 0.5;
-        }
-        60% {
-          transform: scaleY(1.18) translateY(-1px);
-          opacity: 1;
-        }
-        100% {
-          transform: scaleY(1) translateY(0);
-        }
-      }
-      .nav-btn.active .ic-stats {
-        transform-origin: 50% 100%;
-        animation: navIconGrowBars 0.55s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      @keyframes navIconGearSpin {
-        from {
-          transform: rotate(0deg);
-        }
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .nav-btn.active .ic-settings {
-        animation: navIconGearSpin 2.8s linear infinite;
-      }
-      /* กดค้าง/แตะ ให้ยุบตัวเล็กน้อยแบบมีแรงสปริงตีกลับ — ใช้ตัวเลือกนี้หลัง
-         .nav-btn.active เจตนา (specificity เท่ากัน) เพื่อให้ตอนกดปุ่มที่ active
-         อยู่แล้วซ้ำ ก็ยังเห็นอาการ "ยุบ" ตอบสนองการแตะเหมือนปุ่มอื่น ๆ */
-      .nav-btn:active {
-        scale: 0.86;
-        transition-duration: 0.15s;
-      }
-      .nav-fab {
-        position: relative;
-        width: 54px;
-        height: 54px;
-        border-radius: 50%;
-        margin-top: -26px;
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #181000;
-        border: 4px solid var(--bg);
-        cursor: pointer;
-        box-shadow: 0 0px 10px var(--accent);
-        transition:
-          transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
-          background 0.35s ease,
-          color 0.3s ease,
-          box-shadow 0.35s ease;
-      }
-      /* วาดเครื่องหมาย + ด้วย CSS แทนตัวอักษร ＋ เพื่อให้จุดศูนย์กลางแม่นยำ
-         ป้องกันอาการ "เบี้ยว" ตอนหมุน ซึ่งเกิดจากกล่องตัวอักษรของฟอนต์ที่ไม่ได้จัดกึ่งกลางสนิท */
-      .nav-fab::before,
-      .nav-fab::after {
-        content: "";
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        background: currentColor;
-        border-radius: 2px;
-        transform: translate(-50%, -50%);
-      }
-      .nav-fab::before {
-        width: 2.5px;
-        height: 20px;
-      }
-      .nav-fab::after {
-        width: 20px;
-        height: 2.5px;
-      }
-      .nav-fab:active {
-        transform: scale(0.9) rotate(90deg);
-      }
-      .nav-fab.is-open {
-        transform: rotate(135deg);
-        background: #ed5a5d;
-        background: radial-gradient(
-          circle,
-          rgba(237, 90, 93, 1) 0%,
-          rgba(232, 81, 81, 1) 50%,
-          rgba(252, 33, 33, 1) 100%
-        );
-        color: #f5f5f5;
-        box-shadow: 0 0px 10px rgba(230, 102, 102);
-      }
-      .nav-fab.is-open:active {
-        transform: rotate(135deg) scale(0.9);
-      }
-      .bottom-nav-inner.nav-locked .nav-btn {
-        opacity: 0.35;
-        pointer-events: none;
-      }
-      body.log-sheet-open .bottom-nav {
-        z-index: 62;
-      }
-
-      /* ---------- Log sheet (add/edit fill — near-fullscreen LIFF-style) ---------- */
-      .log-sheet-backdrop {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        z-index: 55;
-        opacity: 0;
-        pointer-events: none;
-        transition: opacity 0.25s ease;
-      }
-      .log-sheet-backdrop.open {
-        opacity: 1;
-        pointer-events: all;
-      }
-      #view-log.active {
-        display: block;
-        position: fixed;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        top: 7vh;
-        z-index: 58;
-        max-width: 560px;
-        margin: 0 auto;
-        background: var(--bg);
-        border-radius: 26px 26px 0 0;
-        box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.4);
-        padding: 10px 18px calc(24px + var(--nav-h) + var(--safe-b));
-        overflow-y: auto;
-        animation: logSheetUp 0.32s cubic-bezier(0.16, 1, 0.3, 1);
-      }
-      #view-log.active::before {
-        content: "";
-        display: block;
-        width: 38px;
-        height: 4px;
-        background: var(--border);
-        border-radius: 99px;
-        margin: 4px auto 14px;
-      }
-      @keyframes logSheetUp {
-        from {
-          transform: translateY(40px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      #view-log.active.closing {
-        animation: logSheetDown 0.16s cubic-bezier(0.4, 0, 1, 1) forwards;
-        pointer-events: none;
-        z-index: 10;
-      }
-      @keyframes logSheetDown {
-        from {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateY(60px);
-          opacity: 0;
-        }
-      }
-
-      /* ---------- Gauge (signature element) ---------- */
-      .gauge-wrap {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-      }
-      .gauge-value {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 28px;
-        margin-top: -15px;
-      }
-      .gauge-unit {
-        font-size: 12px;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-      .gauge-label {
-        font-size: 11px;
-        color: var(--text-dim);
-        margin-top: 2px;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-      }
-
-      /* ---------- Fuel tank level bar (attached to gauge card) ---------- */
-      .fuel-tank-divider {
-        height: 1px;
-        background: var(--border);
-        margin: 16px 0 14px;
-      }
-      .fuel-tank-row {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-      }
-      .fuel-tank-icon {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: var(--surface-2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 20px;
-        flex-shrink: 0;
-      }
-      .fuel-tank-main {
-        flex: 1;
-        min-width: 0;
-      }
-      .fuel-tank-top {
-        display: flex;
-        justify-content: space-between;
-        align-items: baseline;
-        margin-bottom: 6px;
-      }
-      .fuel-tank-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        font-weight: 600;
-      }
-      .fuel-tank-pct {
-        font-size: 16px;
-        font-weight: 700;
-      }
-      .fuel-tank-bar-bg {
-        position: relative;
-        height: 12px;
-        border-radius: 999px;
-        background: var(--surface-2);
-        overflow: hidden;
-        box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.15);
-      }
-      .fuel-tank-bar-fill {
-        position: relative;
-        height: 100%;
-        border-radius: 999px;
-        width: 0%;
-        transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-        background: linear-gradient(90deg, var(--bad), var(--warn));
-      }
-      .fuel-tank-bar-fill.lvl-good {
-        background: linear-gradient(90deg, #17b193, var(--good));
-      }
-      .fuel-tank-bar-fill.lvl-warn {
-        background: linear-gradient(90deg, #ff9142, var(--warn));
-      }
-      .fuel-tank-bar-fill.lvl-bad {
-        background: linear-gradient(90deg, #d63e5c, var(--bad));
-      }
-      .fuel-tank-bar-fill::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-          180deg,
-          rgba(255, 255, 255, 0.35),
-          rgba(255, 255, 255, 0) 55%
-        );
-      }
-      .fuel-tank-bottom {
-        display: flex;
-        justify-content: space-between;
-        font-size: 11px;
-        color: var(--text-dim);
-        margin-top: 6px;
-      }
-      .pill.warn {
-        background: rgba(255, 176, 32, 0.15);
-        color: var(--warn);
-      }
-
-      /* ---------- Stat grid ---------- */
-      .stat-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-      .stat-box {
-        background: var(--surface);
-        border-radius: var(--radius-md);
-        padding: 12px 14px;
-      }
-      .stat-box .k {
-        font-size: 10.5px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        font-weight: 600;
-      }
-      .stat-box .v {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 19px;
-        margin-top: 4px;
-      }
-      .stat-box .v small {
-        font-size: 11px;
-        color: var(--text-muted);
-        font-weight: 500;
-      }
-
-      /* ---------- Fill log list ---------- */
-      .log-item {
-        position: relative;
-        padding: 14px 0;
-        border-bottom: 1px solid var(--border);
-      }
-      .log-item:last-child {
-        border-bottom: none;
-      }
-      .log-item.log-item-deleting {
-        pointer-events: none;
-      }
-      .log-item.log-item-deleting > * {
-        visibility: hidden;
-      }
-      .log-item.log-item-deleting > .dust-particles {
-        visibility: visible;
-      }
-      .log-item.log-item-deleting::before {
-        content: "";
-        position: absolute;
-        inset: 6px 0;
-        border-radius: 12px;
-        background: linear-gradient(
-          90deg,
-          var(--surface-2) 25%,
-          var(--border) 37%,
-          var(--surface-2) 63%
-        );
-        background-size: 400% 100%;
-        animation: skeletonShimmer 1.2s ease-in-out infinite;
-      }
-      @keyframes skeletonShimmer {
-        0% {
-          background-position: 100% 50%;
-        }
-        100% {
-          background-position: 0 50%;
-        }
-      }
-      /* ---------- Delete: shatter-to-dust effect ---------- */
-      .log-item.log-item-shatter {
-        transition:
-          height 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-          padding 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-          margin 0.28s cubic-bezier(0.4, 0, 0.2, 1),
-          border-color 0.28s ease;
-        overflow: hidden;
-      }
-      .log-item.log-item-shatter::before {
-        animation: shatterSkeleton 0.62s cubic-bezier(0.55, 0, 0.85, 0.35)
-          forwards !important;
-      }
-      @keyframes shatterSkeleton {
-        0% {
-          opacity: 1;
-          filter: blur(0px);
-          transform: scale(1);
-        }
-        12% {
-          opacity: 1;
-          filter: blur(0px);
-          transform: scale(1.015);
-        }
-        45% {
-          opacity: 0.55;
-          filter: blur(1.5px);
-          transform: scale(0.97);
-        }
-        100% {
-          opacity: 0;
-          filter: blur(6px);
-          transform: scale(0.85);
-        }
-      }
-      .dust-particles {
-        position: absolute;
-        inset: 0;
-        overflow: visible;
-        pointer-events: none;
-      }
-      .dust-particle {
-        position: absolute;
-        border-radius: 1.5px;
-        background: var(--text-dim);
-        opacity: 0.95;
-        animation: dustFly 0.65s cubic-bezier(0.36, 0.07, 0.19, 0.97) forwards;
-        will-change: transform, opacity;
-      }
-      .dust-particle.shard {
-        border-radius: 2.5px;
-        background: linear-gradient(135deg, var(--text-muted), var(--border));
-      }
-      @keyframes dustFly {
-        0% {
-          opacity: 0.95;
-          transform: translate(0, 0) scale(1) rotate(0deg);
-        }
-        25% {
-          opacity: 0.95;
-        }
-        100% {
-          opacity: 0;
-          transform: translate(var(--dx), var(--dy)) scale(0.15)
-            rotate(var(--rot));
-        }
-      }
-      .log-ic {
-        width: 42px;
-        height: 42px;
-        border-radius: 12px;
-        background: var(--surface-2);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 18px;
-        flex-shrink: 0;
-      }
-      .log-main {
-        flex: 1;
-        min-width: 0;
-      }
-      .log-main .l1 {
-        font-weight: 600;
-        font-size: 14px;
-        display: flex;
-        justify-content: space-between;
-        gap: 8px;
-      }
-      .log-main .l2 {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-top: 2px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-      }
-      .log-cost {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 14px;
-        white-space: nowrap;
-      }
-      .pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        font-size: 11px;
-        font-weight: 600;
-        padding: 2px 8px;
-        border-radius: 999px;
-        background: var(--surface-2);
-        color: var(--text-muted);
-      }
-      .pill.good {
-        background: rgba(34, 211, 176, 0.15);
-        color: var(--good);
-      }
-      .pill.bad {
-        background: rgba(255, 84, 112, 0.15);
-        color: var(--bad);
-      }
-      .pill.accent {
-        background: color-mix(in srgb, var(--accent) 15%, transparent);
-        color: var(--accent);
-      }
-
-      /* ---------- Fill log card (redesigned, less cluttered) ---------- */
-      .log-card-head {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-bottom: 10px;
-      }
-      .log-card-title {
-        flex: 1;
-        min-width: 0;
-      }
-      .log-card-title .fuel-name {
-        font-weight: 700;
-        font-size: 15px;
-        display: flex;
-        align-items: center;
-        flex-wrap: wrap;
-        gap: 4px;
-      }
-      .log-card-title .fuel-date {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-top: 3px;
-      }
-      .log-card-cost {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 15px;
-        color: var(--accent);
-        white-space: nowrap;
-        text-align: right;
-        flex-shrink: 0;
-      }
-      .log-card-cost small {
-        font-size: 11px;
-        font-weight: 500;
-        color: var(--text-muted);
-      }
-      .log-card-actions {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        flex-shrink: 0;
-      }
-      .log-card-actions button {
-        width: 30px;
-        height: 30px;
-        border: none;
-        background: transparent;
-        cursor: pointer;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        transition: transform .15s ease, opacity .15s ease;
-      }
-      .log-card-actions button:hover {
-        transform: scale(1.1);
-        opacity: 0.8;
-    }
-
-      /* ---------- Expand / collapse toggle for the detail grid ---------- */
-       span.lct-chev {
-          font-size: 14px;
-      }
-      .log-card-toggle {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        cursor: pointer;
-        padding: 8px 12px;
-        border-radius: var(--radius-md);
-        background: var(--surface-2);
-        font-size: 11.5px;
-        color: var(--text-muted);
-        transition: background 0.15s ease;
-        user-select: none;
-      }
-      .log-card-toggle:active {
-        background: var(--border);
-      }
-      .log-card-toggle .lct-preview {
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-        min-width: 0;
-      }
-      .log-card-toggle .lct-chev-group {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        flex-shrink: 0;
-        color: var(--text-dim);
-      }
-      .log-card-toggle .lct-label::before {
-        content: "ดูรายละเอียด";
-      }
-      .log-item.expanded .log-card-toggle .lct-label::before {
-        content: "ซ่อนรายละเอียด";
-      }
-      .log-card-toggle .lct-chev {
-        display: inline-block;
-        transition: transform 0.2s ease;
-      }
-      .log-item.expanded .log-card-toggle .lct-chev {
-        transform: rotate(180deg);
-      }
-
-      .log-card-details {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows 0.25s ease;
-      }
-      .log-card-details > div {
-        overflow: hidden;
-      }
-      .log-item.expanded .log-card-details {
-        grid-template-rows: 1fr;
-      }
-
-      .log-card-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px 14px;
-        background: var(--surface-2);
-        border-radius: var(--radius-md);
-        padding: 12px 14px;
-        margin-top: 10px;
-      }
-      .log-card-grid .lg-item {
-        display: flex;
-        flex-direction: column;
-        gap: 3px;
-        min-width: 0;
-      }
-      .log-card-grid .lg-k {
-        font-size: 10.5px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
-        font-weight: 600;
-      }
-      .log-card-grid .lg-v {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 13.5px;
-        overflow-wrap: break-word;
-      }
-      .log-card-grid .lg-v.accent {
-        color: var(--accent);
-      }
-      .log-card-level {
-        margin-top: 8px;
-      }
-      .log-card-note {
-        margin-top: 10px;
-        font-size: 12px;
-        color: var(--text-muted);
-        display: flex;
-        gap: 6px;
-        align-items: flex-start;
-        opacity: 0.9;
-      }
-
-      .empty-state {
-        text-align: center;
-        padding: 40px 20px;
-        color: var(--text-muted);
-      }
-      .empty-state .em-ic {
-        font-size: 40px;
-        margin-bottom: 10px;
-      }
-      .empty-state .em-t {
-        font-weight: 600;
-        color: var(--text);
-        margin-bottom: 4px;
-      }
-      .empty-state .em-s {
-        font-size: 13px;
-      }
-
-      /* ---------- Form ---------- */
-      .field {
-        margin-bottom: 14px;
-      }
-      .field label {
-        display: block;
-        font-size: 12.5px;
-        font-weight: 600;
-        color: var(--text-muted);
-        margin-bottom: 6px;
-      }
-      .input,
-      select.input {
-        width: 100%;
-        background: var(--surface-2);
-        border: 1px solid var(--border);
-        color: var(--text);
-        border-radius: var(--radius-sm);
-        padding: 12px 14px;
-        font-size: 15px;
-        font-family: var(--font-body);
-        outline: none;
-        transition: border-color 0.15s;
-      }
-      /* กำหนดสีพื้นหลัง/ตัวหนังสือของ dropdown ให้ชัดเจนทุกที่ที่ใช้ select
-         (ป้องกันปัญหา option สีเดียวกับพื้นหลังตอนกดเปิดดรอปดาวน์) */
-      select {
-        background-color: var(--surface-2);
-        color: var(--text);
-      }
-      select option {
-        background-color: var(--surface-2);
-        color: var(--text);
-      }
-      select.btn-outline {
-        background-color: var(--surface-2);
-      }
-      .input:focus {
-        border-color: var(--accent);
-      }
-      /* ช่องลิงก์ Google Sheet ที่เชื่อมต่ออยู่แล้วจะถูกล็อกไว้ (read-only)
-         ต้องกด "เปลี่ยนลิงก์ Google Sheet" แล้วยืนยันผ่าน modal เท่านั้นถึงจะแก้ได้ */
-      .input:read-only {
-        color: var(--text-muted);
-        background: var(--surface);
-        cursor: default;
-      }
-      .input.mono-input {
-        font-family: var(--font-mono);
-        font-weight: 600;
-      }
-      .input-group {
-        position: relative;
-      }
-      .input-group .suffix {
-        position: absolute;
-        right: 14px;
-        top: 50%;
-        transform: translateY(-50%);
-        font-size: 12.5px;
-        color: var(--text-dim);
-        font-weight: 600;
-        pointer-events: none;
-      }
-      .row2 {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 10px;
-      }
-      .segmented {
-        display: flex;
-        background: var(--surface-2);
-        border-radius: var(--radius-sm);
-        padding: 4px;
-        gap: 4px;
-      }
-      .segmented button {
-        flex: 1;
-        border: none;
-        background: transparent;
-        color: var(--text-muted);
-        padding: 9px 8px;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 13px;
-        cursor: pointer;
-        transition: all 0.15s;
-      }
-      .segmented button.active {
-        background: var(--accent);
-        color: #181000;
-      }
-      .toggle-row {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 4px 2px;
-      }
-      .toggle-row .tl {
-        font-size: 14px;
-        font-weight: 600;
-      }
-      .toggle-row .ts {
-        font-size: 12px;
-        color: var(--text-muted);
-      }
-      .switch {
-        position: relative;
-        width: 46px;
-        height: 26px;
-        flex-shrink: 0;
-      }
-      .switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-      }
-      .slider {
-        position: absolute;
-        inset: 0;
-        background: var(--border);
-        border-radius: 999px;
-        cursor: pointer;
-        transition: 0.2s;
-      }
-      .slider:before {
-        content: "";
-        position: absolute;
-        width: 20px;
-        height: 20px;
-        left: 3px;
-        top: 3px;
-        background: #fff;
-        border-radius: 50%;
-        transition: 0.2s;
-      }
-      input:checked + .slider {
-        background: var(--accent);
-      }
-      input:checked + .slider:before {
-        transform: translateX(20px);
-      }
-
-      .btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 8px;
-        border: none;
-        border-radius: var(--radius-sm);
-        padding: 14px 18px;
-        font-weight: 700;
-        font-size: 14.5px;
-        cursor: pointer;
-        width: 100%;
-        transition:
-          transform 0.12s ease,
-          filter 0.15s;
-      }
-      .btn:active {
-        transform: scale(0.98);
-      }
-      .btn-primary {
-        background: linear-gradient(135deg, var(--accent), var(--accent-2));
-        color: #181000;
-        box-shadow: 0 3px 10px
-          color-mix(in srgb, var(--accent) 50%, transparent);
-      }
-      .btn-ghost {
-        background: var(--surface-2);
-        color: var(--text);
-      }
-      .btn-outline {
-        background: transparent;
-        border: 1px solid var(--border);
-        color: var(--text);
-      }
-      .btn-danger {
-        background: rgba(255, 84, 112, 0.12);
-        color: var(--bad);
-      }
-      .btn-sm {
-        padding: 9px 14px;
-        font-size: 13px;
-        width: auto;
-      }
-      /* ---------- Circular progress button (submitLogBtn) ---------- */
-      .btn.btn-morph {
-        position: relative;
-        overflow: hidden;
-        transition:
-          width 0.38s cubic-bezier(0.65, 0, 0.35, 1),
-          border-radius 0.38s cubic-bezier(0.65, 0, 0.35, 1);
-      }
-      .btn.btn-morph.is-loading,
-      .btn.btn-morph.is-success,
-      .btn.btn-morph.is-error {
-        width: 56px;
-        min-width: 56px;
-        height: 56px;
-        padding: 0;
-        border-radius: 50%;
-        margin: 0 auto;
-        cursor: not-allowed;
-        pointer-events: none;
-      }
-      .btn.btn-morph .btn-label-text {
-        transition:
-          opacity 0.15s ease,
-          transform 0.15s ease;
-      }
-      .btn.btn-morph.is-loading .btn-label-text,
-      .btn.btn-morph.is-success .btn-label-text,
-      .btn.btn-morph.is-error .btn-label-text {
-        opacity: 0;
-        transform: scale(0.5);
-        position: absolute;
-      }
-      .btn .btn-spinner {
-        display: none;
-        width: 22px;
-        height: 22px;
-        border-radius: 50%;
-        border: 3px solid rgba(24, 16, 0, 0.25);
-        border-top-color: #181000;
-        animation: btnspin 0.7s linear infinite;
-        flex-shrink: 0;
-      }
-      .btn.btn-morph.is-loading .btn-spinner {
-        display: inline-block;
-        animation:
-          btnspin 0.7s linear infinite,
-          btnPop 0.25s ease;
-      }
-      .btn .btn-check {
-        display: none;
-        width: 24px;
-        height: 24px;
-        flex-shrink: 0;
-      }
-      .btn .btn-check svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-      .btn .btn-check path {
-        fill: none;
-        stroke: #181000;
-        stroke-width: 3;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-dasharray: 20;
-        stroke-dashoffset: 20;
-      }
-      .btn.btn-morph.is-success .btn-check {
-        display: inline-block;
-        animation: btnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      }
-      .btn.btn-morph.is-success .btn-check path {
-        animation: btnCheckDraw 0.35s ease forwards 0.05s;
-      }
-      .btn .btn-x {
-        display: none;
-        width: 24px;
-        height: 24px;
-        flex-shrink: 0;
-      }
-      .btn .btn-x svg {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-      .btn .btn-x path {
-        fill: none;
-        stroke: #fff;
-        stroke-width: 3;
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-dasharray: 20;
-        stroke-dashoffset: 20;
-      }
-      .btn.btn-morph.is-error {
-        background: var(--bad);
-      }
-      .btn.btn-morph.is-error .btn-x {
-        display: inline-block;
-        animation:
-          btnPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-          btnShake 0.45s ease 0.28s;
-      }
-      .btn.btn-morph.is-error .btn-x path {
-        animation: btnCheckDraw 0.35s ease forwards 0.05s;
-      }
-      @keyframes btnShake {
-        0%,
-        100% {
-          transform: translateX(0);
-        }
-        20% {
-          transform: translateX(-4px);
-        }
-        40% {
-          transform: translateX(4px);
-        }
-        60% {
-          transform: translateX(-3px);
-        }
-        80% {
-          transform: translateX(3px);
-        }
-      }
-      @keyframes btnspin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      @keyframes btnPop {
-        0% {
-          transform: scale(0);
-        }
-        60% {
-          transform: scale(1.15);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-      @keyframes btnCheckDraw {
-        to {
-          stroke-dashoffset: 0;
-        }
-      }
-
-      .chip-select {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .chip-opt {
-        border: 1px solid var(--border);
-        background: var(--surface-2);
-        color: var(--text-muted);
-        padding: 8px 13px;
-        border-radius: 999px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-      }
-      .chip-opt.active {
-        background: var(--accent);
-        border-color: var(--accent);
-        color: #181000;
-      }
-
-      /* ---------- Color theme picker (settings) ---------- */
-      .theme-swatch-grid {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 12px;
-        margin-top: 4px;
-      }
-      .theme-swatch {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        cursor: pointer;
-        padding: 6px 4px;
-        border-radius: var(--radius-sm);
-        border: 1px solid transparent;
-        transition:
-          border-color 0.15s ease,
-          background 0.15s ease;
-      }
-      .theme-swatch .dot {
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border: 2px solid var(--surface);
-        box-shadow: 0 0 0 1px var(--border);
-      }
-      .theme-swatch .lbl {
-        font-size: 11px;
-        font-weight: 600;
-        color: var(--text-muted);
-      }
-      .theme-swatch.active {
-        border-color: var(--border);
-        background: var(--surface-2);
-      }
-      .theme-swatch.active .dot {
-        box-shadow: 0 0 0 2px var(--accent);
-      }
-      .theme-swatch.active .lbl {
-        color: var(--text);
-      }
-
-      /* ---------- Cars grid ---------- */
-      .car-card {
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-lg);
-        padding: 16px;
-        display: flex;
-        align-items: center;
-        gap: 14px;
-        box-shadow: var(--shadow);
-        cursor: pointer;
-        position: relative;
-      }
-      .car-card + .car-card {
-        margin-top: 10px;
-      }
-      .car-card.selected {
-        border-color: var(--accent);
-      }
-      .car-avatar {
-        width: 52px;
-        height: 52px;
-        border-radius: 16px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 26px;
-        flex-shrink: 0;
-      }
-      .car-info {
-        flex: 1;
-        min-width: 0;
-      }
-      .car-info .cn {
-        font-weight: 700;
-        font-size: 15px;
-      }
-      .car-info .cm {
-        font-size: 12px;
-        color: var(--text-muted);
-        margin-top: 2px;
-      }
-      .car-edit {
-        background: none;
-        border: none;
-        color: var(--text-dim);
-        font-size: 16px;
-        cursor: pointer;
-        padding: 6px;
-      }
-      .add-car-card {
-        border: 1.5px dashed var(--border);
-        border-radius: var(--radius-lg);
-        padding: 20px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 6px;
-        color: var(--text-muted);
-        cursor: pointer;
-        margin-top: 10px;
-        font-weight: 600;
-        font-size: 13px;
-      }
-
-      /* ---------- Modal / sheet ---------- */
-      .overlay {
-        position: fixed;
-        inset: 0;
-        background: rgba(0, 0, 0, 0.55);
-        z-index: 50;
-        display: none;
-        align-items: flex-end;
-        justify-content: center;
-      }
-      .overlay.open {
-        display: flex;
-      }
-      .sheet {
-        background: var(--bg-elev);
-        width: 100%;
-        max-width: 560px;
-        border-radius: 24px 24px 0 0;
-        padding: 10px 20px calc(24px + var(--safe-b));
-        max-height: 88vh;
-        overflow-y: auto;
-        animation: slideUp 0.25s ease;
-      }
-      @keyframes slideUp {
-        from {
-          transform: translateY(30px);
-          opacity: 0;
-        }
-        to {
-          transform: translateY(0);
-          opacity: 1;
-        }
-      }
-      .sheet.closing {
-        animation: slideDown 0.22s ease forwards;
-      }
-      @keyframes slideDown {
-        from {
-          transform: translateY(0);
-          opacity: 1;
-        }
-        to {
-          transform: translateY(30px);
-          opacity: 0;
-        }
-      }
-      .sheet-handle {
-        width: 38px;
-        height: 4px;
-        background: var(--border);
-        border-radius: 99px;
-        margin: 6px auto 14px;
-      }
-      .sheet-title {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 18px;
-        margin-bottom: 16px;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-      }
-
-      /* ---------- Toast ---------- */
-      #toast {
-        position: fixed;
-        left: 50%;
-        bottom: calc(var(--nav-h) + var(--safe-b) + 18px);
-        transform: translateX(-50%) translateY(20px);
-        background: var(--surface);
-        border: 1px solid var(--border);
-        color: var(--text);
-        padding: 12px 18px;
-        border-radius: 14px;
-        font-size: 13.5px;
-        font-weight: 600;
-        box-shadow: var(--shadow);
-        z-index: 80;
-        opacity: 0;
-        pointer-events: none;
-        transition: all 0.25s ease;
-        max-width: 88%;
-        text-align: center;
-      }
-      #toast.show {
-        opacity: 1;
-        transform: translateX(-50%) translateY(0);
-      }
-
-      /* ---------- Misc ---------- */
-      .price-ticker {
-        display: flex;
-        gap: 8px;
-        overflow-x: auto;
-        padding-bottom: 4px;
-        margin-top: 2px;
-        scrollbar-width: none;
-      }
-      .price-ticker::-webkit-scrollbar {
-        display: none;
-      }
-      .price-pill {
-        flex-shrink: 0;
-        background: var(--surface-2);
-        border-radius: 14px;
-        padding: 10px 12px;
-        min-width: 104px;
-        display: flex;
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 2px;
-      }
-      .price-pill img {
-        width: 48px;
-        height: 22px;
-        object-fit: fill;
-
-        border-radius: 4px;
-        margin-bottom: 2px;
-      }
-      .price-pill .pn {
-        font-size: 10.5px;
-        color: var(--text-muted);
-        font-weight: 600;
-        white-space: nowrap;
-        max-width: 120px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      .price-pill .pv {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 15px;
-        margin-top: 1px;
-      }
-      .price-pill .pprev {
-        font-size: 10.5px;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 3px;
-      }
-      .price-pill .pprev.up {
-        color: var(--bad);
-      }
-      .price-pill .pprev.down {
-        color: var(--good);
-      }
-      .price-pill .pprev.flat {
-        color: var(--text-dim);
-      }
-      .spinner {
-        width: 16px;
-        height: 16px;
-        border: 2.5px solid rgba(255, 255, 255, 0.3);
-        border-top-color: #181000;
-        border-radius: 50%;
-        animation: spin 0.7s linear infinite;
-      }
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-      .skeleton {
-        background: linear-gradient(
-          90deg,
-          var(--surface-2) 25%,
-          var(--border) 50%,
-          var(--surface-2) 75%
-        );
-        background-size: 200% 100%;
-        animation: shimmer 1.4s infinite;
-        border-radius: 8px;
-      }
-      @keyframes shimmer {
-        0% {
-          background-position: 200% 0;
-        }
-        100% {
-          background-position: -200% 0;
-        }
-      }
-      .hint {
-        font-size: 11.5px;
-        color: var(--text-dim);
-        margin-top: 6px;
-      }
-
-      /* ============================================================
-         HOME — skeleton loading state
-         ============================================================ */
-      #homeSkeleton .skel-card {
-        background: var(--surface);
-        border-radius: var(--radius-lg);
-        padding: 16px;
-        margin-bottom: 14px;
-      }
-      #homeSkeleton .skel-row {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 12px 0;
-        border-bottom: 1px solid var(--border);
-      }
-      #homeSkeleton .skel-row:last-child {
-        border-bottom: none;
-      }
-
-      /* ============================================================
-         HOME — month filter bar (prominent, hard to miss)
-         ============================================================ */
-      .month-filter-bar {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        background: linear-gradient(
-          135deg,
-          color-mix(in srgb, var(--accent) 14%, var(--surface)),
-          var(--surface)
-        );
-        border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
-        border-radius: var(--radius-md);
-        padding: 6px;
-        margin-top: 18px;
-        margin-bottom: 14px;
-        box-shadow: 0 4px 18px
-          color-mix(in srgb, var(--accent) 12%, transparent);
-      }
-      .month-nav-btn {
-        width: 34px;
-        height: 34px;
-        flex-shrink: 0;
-        border-radius: 10px;
-        border: 1px solid var(--border);
-        background: var(--surface);
-        color: var(--text);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        font-size: 12px;
-        transition:
-          transform 0.15s ease,
-          background 0.2s;
-      }
-      .month-nav-btn:active {
-        transform: scale(0.9);
-      }
-      .month-nav-btn:disabled {
-        opacity: 0.3;
-        cursor: default;
-      }
-      .month-select-wrap {
-        flex: 1;
-        position: relative;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        min-width: 0;
-      }
-      .month-cal-ic {
-        position: absolute;
-        left: 12px;
-        font-size: 12px;
-        color: var(--accent);
-        pointer-events: none;
-      }
-      .month-chev-ic {
-        position: absolute;
-        right: 12px;
-        font-size: 10px;
-        color: var(--text-dim);
-        pointer-events: none;
-      }
-      .month-select {
-        width: 100%;
-        border: none;
-        background: transparent;
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 14.5px;
-        color: var(--text);
-        text-align: center;
-        padding: 9px 28px;
-        cursor: pointer;
-      }
-      .month-select:focus {
-        outline: none;
-      }
-
-      /* ---------- Home trend chart card ---------- */
-      .home-chart-card {
-        background: var(--surface);
-        border-radius: var(--radius-lg);
-        padding: 16px 14px 10px;
-        margin-bottom: 4px;
-      }
-      .home-chart-head {
-        display: flex;
-        align-items: baseline;
-        justify-content: space-between;
-        margin-bottom: 10px;
-      }
-      .home-chart-head .htitle {
-        font-family: var(--font-display);
-        font-weight: 700;
-        font-size: 14px;
-      }
-      .home-chart-head .hsub {
-        font-size: 10.5px;
-        color: var(--text-dim);
-      }
-      .home-chart-legend {
-        display: flex;
-        gap: 14px;
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 8px;
-      }
-      .home-chart-legend span {
-        display: inline-flex;
-        align-items: center;
-        gap: 5px;
-      }
-      .home-chart-legend i {
-        width: 9px;
-        height: 9px;
-        border-radius: 3px;
-        display: inline-block;
-      }
-
-      /* ============================================================
-         STATS — log history filter bar (search + jump-to-month)
-         ============================================================ */
-      .count-badge {
-        font-size: 11px;
-        text-transform: none;
-        letter-spacing: 0;
-        color: var(--text-dim);
-        font-weight: 600;
-      }
-      .log-filter-bar {
-        display: flex;
-        flex-direction: column;
-        gap: 8px;
-        margin-bottom: 12px;
-      }
-      .log-search-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-      .log-search-ic {
-        position: absolute;
-        left: 14px;
-        font-size: 13px;
-        color: var(--text-dim);
-        pointer-events: none;
-      }
-      .log-search-input {
-        width: 100%;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        color: var(--text);
-        font-family: var(--font-body);
-        font-size: 13.5px;
-        padding: 11px 14px 11px 36px;
-      }
-      .log-search-input::placeholder {
-        color: var(--text-dim);
-      }
-      .log-search-input:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-      .log-month-select-wrap {
-        position: relative;
-        display: flex;
-        align-items: center;
-      }
-      .log-month-ic {
-        position: absolute;
-        left: 14px;
-        font-size: 12px;
-        color: var(--accent);
-        pointer-events: none;
-      }
-      .log-month-chev {
-        position: absolute;
-        right: 14px;
-        font-size: 10px;
-        color: var(--text-dim);
-        pointer-events: none;
-      }
-      .log-month-select {
-        width: 100%;
-        appearance: none;
-        -webkit-appearance: none;
-        -moz-appearance: none;
-        background: var(--surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-md);
-        color: var(--text);
-        font-family: var(--font-body);
-        font-weight: 600;
-        font-size: 13.5px;
-        padding: 11px 32px 11px 36px;
-        cursor: pointer;
-      }
-      .log-month-select:focus {
-        outline: none;
-        border-color: var(--accent);
-      }
-      .divider {
-        height: 1px;
-        background: var(--border);
-        margin: 16px 0;
-      }
-      .setup-note {
-        background: rgba(255, 122, 41, 0.1);
-        border: 1px solid rgba(255, 122, 41, 0.3);
-        border-radius: var(--radius-md);
-        padding: 14px;
-        font-size: 13px;
-        line-height: 1.6;
-        color: var(--text);
-      }
-      .setup-note code {
-        background: var(--surface-2);
-        padding: 1px 6px;
-        border-radius: 5px;
-        font-family: var(--font-mono);
-        font-size: 12px;
-      }
-      .compare-box {
-        display: flex;
-        align-items: center;
-        justify-content: space-around;
-        text-align: center;
-      }
-      .compare-box .c-item .c-v {
-        font-family: var(--font-mono);
-        font-weight: 700;
-        font-size: 20px;
-      }
-      .compare-box .c-item .c-k {
-        font-size: 11px;
-        color: var(--text-muted);
-        margin-top: 2px;
-      }
-      .compare-arrow {
-        font-size: 20px;
-        color: var(--text-dim);
-      }
-      canvas {
-        max-width: 100%;
-      }
-
-      .fuel-overlay {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.8);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-        color: white;
-      }
-
-      .loading {
-        position: relative;
-        width: 100px;
-        height: 100px;
-        background: #2196f3;
-        border-radius: 50%;
-        box-shadow: inset 0 0 25px #000;
-        overflow: hidden;
-      }
-
-      .loading:before {
-        content: "";
-        position: absolute;
-        top: -150%;
-        left: -60%;
-        width: 200%;
-        height: 200%;
-        border-radius: 40%;
-        background: #111;
-        opacity: 0.5;
-        animation: animate 10s linear infinite;
-      }
-
-      @keyframes animate {
-        0% {
-          transform: rotate(0deg);
-        }
-
-        100% {
-          transform: rotate(360deg);
-        }
-      }
-      .loading:after {
-        content: "";
-        position: absolute;
-        top: -150%;
-        left: -60%;
-        width: 210%;
-        height: 200%;
-        border-radius: 40%;
-        background: #111;
-        opacity: 0.9;
-        animation: animate2 6s linear infinite;
-      }
-      @keyframes animate2 {
-        0% {
-          transform: rotate(360deg);
-        }
-
-        100% {
-          transform: rotate(0deg);
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="styles.css">
   </head>
   <body data-theme="dark" data-color-theme="orange">
     <div id="app">
@@ -2740,43 +682,98 @@
             <div class="theme-swatch-grid" id="colorThemePicker"></div>
           </div>
 
-          <div class="section-title">การเชื่อมต่อ Google Sheet</div>
+          <div class="section-title">แหล่งเก็บข้อมูล</div>
           <div class="card">
-            <div class="field" style="margin-bottom: 14px">
-              <label>ลิงก์ Google Sheet ของคุณ</label>
-              <input
-                class="input"
-                type="text"
-                id="sheetIdInput"
-                placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit"
-              />
-              <div
-                style="
-                  margin-top: 6px;
-                  font-size: 10px;
-                  color: var(--text-muted);
-                "
-              >
-                วางลิงก์ชีต ระบบจะสร้างตารางที่จำเป็นให้อัตโนมัติ
+            <div class="segmented" id="sourceTabs" style="margin-bottom: 8px">
+              <button type="button" data-src="sheet" onclick="selectSourceTab('sheet')">Google Sheet</button>
+              <button type="button" data-src="firebase" onclick="selectSourceTab('firebase')">Firebase</button>
+            </div>
+            <div class="hint" id="sourceActiveHint" style="margin: 0 0 16px"></div>
+
+            <!-- ---- Panel: Google Sheet ---- -->
+            <div id="panelSheet">
+              <div class="field" style="margin-bottom: 14px">
+                <label>ลิงก์ Google Sheet ของคุณ</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="sheetIdInput"
+                  placeholder="https://docs.google.com/spreadsheets/d/xxxxx/edit"
+                />
+                <div style="margin-top: 6px; font-size: 10px; color: var(--text-muted)">
+                  วางลิงก์ชีต ระบบจะสร้างตารางที่จำเป็นให้อัตโนมัติ
+                </div>
               </div>
+              <button class="btn btn-outline" id="connectSheetBtn" onclick="handleSheetConnectClick()">
+                เชื่อมต่อ
+              </button>
+              <button class="btn btn-outline" id="useSheetBtn" style="margin-top: 10px; display: none" onclick="activateSource('sheet')">
+                ใช้ Google Sheet เป็นแหล่งข้อมูล
+              </button>
+              <div class="hint" id="apiStatusHint">ยังไม่ได้เชื่อมต่อ Google Sheet</div>
             </div>
 
-            <button
-              class="btn btn-outline"
-              id="connectSheetBtn"
-              onclick="handleSheetConnectClick()"
-            >
-              เชื่อมต่อ
-            </button>
-            <div class="hint" id="apiStatusHint">
-              ยังไม่ได้เชื่อมต่อ Google Sheet
+            <!-- ---- Panel: Firebase Realtime Database ---- -->
+            <div id="panelFirebase" style="display: none">
+              <div class="field" style="margin-bottom: 14px">
+                <label>Database URL</label>
+                <input
+                  class="input"
+                  type="text"
+                  id="fbUrlInput"
+                  placeholder="https://xxxx-default-rtdb.asia-southeast1.firebasedatabase.app"
+                  autocomplete="off"
+                  autocapitalize="off"
+                  spellcheck="false"
+                />
+              </div>
+              <div class="field" style="margin-bottom: 14px">
+                <label>Database Secret (ไม่บังคับ)</label>
+                <input
+                  class="input"
+                  type="password"
+                  id="fbAuthInput"
+                  placeholder="เว้นว่างได้ ถ้า Rules อนุญาตให้อ่าน/เขียน"
+                  autocomplete="off"
+                />
+                <div style="margin-top: 6px; font-size: 10px; color: var(--text-muted)">
+                  ข้อมูลทั้งหมดจะเก็บใน Firebase ของคุณเอง ที่ path /fullfuel
+                </div>
+              </div>
+              <button class="btn btn-outline" id="connectFbBtn" onclick="handleFirebaseConnectClick()">
+                เชื่อมต่อ
+              </button>
+              <button class="btn btn-outline" id="useFbBtn" style="margin-top: 10px; display: none" onclick="activateSource('firebase')">
+                ใช้ Firebase เป็นแหล่งข้อมูล
+              </button>
+              <button class="btn btn-outline" id="migrateFbBtn" style="margin-top: 10px; display: none" onclick="migrateSheetToFirebase()">
+                ย้ายข้อมูลจาก Google Sheet มา Firebase
+              </button>
+              <div class="hint" id="fbStatusHint">ยังไม่ได้เชื่อมต่อ Firebase</div>
+
+              <details style="margin-top: 14px">
+                <summary style="cursor: pointer; font-size: 13px; font-weight: 600">วิธีตั้งค่า Firebase</summary>
+                <ol class="ts" style="color: var(--text-muted); font-size: 12.5px; line-height: 1.7; padding-left: 18px; margin: 8px 0 0">
+                  <li>เข้า console.firebase.google.com แล้วสร้างโปรเจกต์</li>
+                  <li>เมนู Build &gt; Realtime Database &gt; Create Database (แนะนำภูมิภาค Singapore)</li>
+                  <li>คัดลอก URL ที่อยู่ด้านบนของหน้า Data มาวางในช่อง Database URL</li>
+                  <li>
+                    แบบปลอดภัย: ตั้ง Rules เป็น <code>{"rules":{".read":false,".write":false}}</code>
+                    แล้วนำ Database Secret (Project settings &gt; Service accounts &gt; Database secrets) มาวางในช่อง Secret
+                  </li>
+                  <li>
+                    แบบง่าย: ไม่ใส่ Secret แต่ต้องเปิด Rules ให้ <code>.read</code> และ <code>.write</code> เป็น true
+                    ซึ่งใครที่รู้ URL ก็อ่าน/เขียนข้อมูลได้
+                  </li>
+                </ol>
+              </details>
             </div>
           </div>
 
           <div class="section-title">เกี่ยวกับ</div>
           <div class="card">
             <div style="font-weight: 700; margin-bottom: 4px">
-              Full Fuel v1.1
+              Full Fuel v1.5
             </div>
             <div
               class="ts"
@@ -2786,8 +783,8 @@
                 line-height: 1.6;
               "
             >
-              แอปบันทึกการเติมน้ำมันและคำนวณอัตราสิ้นเปลือง ทำงานผ่าน Google
-              Apps Script + Google Sheets
+              แอปบันทึกการเติมน้ำมันและคำนวณอัตราสิ้นเปลือง เก็บข้อมูลได้ทั้งใน
+              Google Sheets และ Firebase Realtime Database
             </div>
           </div>
         </section>
@@ -3019,6 +1016,14 @@
       // ---------------- State ----------------
       let STATE = {
         sheetId: localStorage.getItem("ff_sheet_id") || "",
+        // แหล่งเก็บข้อมูลที่ใช้งานอยู่: "sheet" | "firebase" | "" (ยังไม่ได้ตั้งค่า)
+        // ผู้ใช้เดิมที่เคยเชื่อม Google Sheet ไว้ จะถูกตั้งเป็น "sheet" ให้อัตโนมัติ
+        dataSource:
+          localStorage.getItem("ff_data_source") ||
+          (localStorage.getItem("ff_sheet_id") ? "sheet" : ""),
+        fbUrl: localStorage.getItem("ff_fb_url") || "",
+        fbAuth: localStorage.getItem("ff_fb_auth") || "",
+        settingsTab: null, // แท็บที่กำลังเปิดดูในหน้าตั้งค่า (ไม่เกี่ยวกับแหล่งที่ใช้งานจริง)
         theme: localStorage.getItem("ff_theme") || "dark",
         colorTheme: localStorage.getItem("ff_color_theme") || "orange",
         cars: [],
@@ -3110,11 +1115,15 @@
 
       // ---------------- API ----------------
       async function apiGet(action, params) {
-        if (!STATE.sheetId)
+        // โหมด Firebase: ประวัติการเติมอ่านตรงจาก Firebase ไม่ผ่าน Apps Script
+        if (action === "getFuelLogs" && STATE.dataSource === "firebase")
+          return fbGetLogs(params && params.carId);
+        // ราคาน้ำมันไม่ขึ้นกับแหล่งเก็บข้อมูล จึงไม่ต้องมี Sheet ID
+        if (action !== "getOilPrices" && !STATE.sheetId)
           throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
         const url = new URL(API_URL);
         url.searchParams.set("action", action);
-        url.searchParams.set("sheetId", STATE.sheetId);
+        if (STATE.sheetId) url.searchParams.set("sheetId", STATE.sheetId);
         Object.entries(params || {}).forEach(([k, v]) => {
           if (v !== undefined && v !== null) url.searchParams.set(k, v);
         });
@@ -3124,6 +1133,7 @@
         return json.data;
       }
       async function apiPost(action, payload) {
+        if (STATE.dataSource === "firebase") return fbMutate(action, payload);
         if (!STATE.sheetId)
           throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
         const res = await fetchWithRetry(API_URL, {
@@ -3149,6 +1159,145 @@
         const json = await res.json();
         if (!json.success) throw new Error(json.error || "API error");
         return json.data;
+      }
+
+
+      // ---------------- Firebase Realtime Database (REST) ----------------
+      // ใช้ REST API ตรง ๆ ไม่ต้องโหลด Firebase SDK เพิ่ม และเรียกจากเบราว์เซอร์ได้เลย
+      // โครงสร้างข้อมูล (แยกประวัติตามรถ เพื่ออ่านเฉพาะรถที่เปิดอยู่ได้ทันที
+      // โดยไม่ต้องสร้าง index และลบรถ+ประวัติทั้งหมดได้ด้วย request เดียว):
+      //   /fullfuel/cars/{carId}            -> ข้อมูลรถ
+      //   /fullfuel/logs/{carId}/{logId}    -> ประวัติการเติมน้ำมันของรถคันนั้น
+      // ทุกการเขียนใช้ PUT/PATCH/DELETE ซึ่งทำซ้ำได้ปลอดภัย (idempotent)
+      // จึงใช้ร่วมกับ fetchWithRetry ได้โดยไม่เกิดข้อมูลซ้ำ
+      const FB_ROOT = "fullfuel";
+      const FB_CAR_FIELDS = ["name", "brand", "model", "year", "fuelType", "tankSize", "color", "icon"];
+      const FB_LOG_FIELDS = ["carId", "date", "odometer", "fuelType", "fuelIcon", "pricePerLiter", "liters", "totalCost", "isFullTank", "note"];
+
+      function normalizeFirebaseUrl(raw) {
+        try {
+          const u = new URL(String(raw || "").trim());
+          if (u.protocol !== "https:") return null;
+          if (!/\.(firebaseio\.com|firebasedatabase\.app)$/i.test(u.hostname)) return null;
+          return u.origin;
+        } catch (e) {
+          return null;
+        }
+      }
+
+      function fbBuildUrl(path, cfg) {
+        const u = new URL(`${cfg.url}/${FB_ROOT}${path ? "/" + path : ""}.json`);
+        if (cfg.auth) u.searchParams.set("auth", cfg.auth);
+        return u.toString();
+      }
+
+      async function fbRequest(method, path, body, cfg) {
+        cfg = cfg || { url: STATE.fbUrl, auth: STATE.fbAuth };
+        const opts = { method };
+        if (body !== undefined) opts.body = JSON.stringify(body);
+        const res = await fetchWithRetry(fbBuildUrl(path, cfg), opts);
+        if (!res.ok) {
+          let detail = "";
+          try {
+            const j = await res.json();
+            detail = (j && j.error) || "";
+          } catch (e) {}
+          if (res.status === 401 || res.status === 403)
+            throw new Error("Firebase ปฏิเสธการเข้าถึง ตรวจสอบ Rules หรือ Database Secret");
+          if (res.status === 404)
+            throw new Error("ไม่พบฐานข้อมูล Firebase ตรวจสอบ Database URL");
+          throw new Error("Firebase error " + res.status + (detail ? ": " + detail : ""));
+        }
+        return res.json();
+      }
+
+      const fbSeg = (v) => encodeURIComponent(String(v));
+      function fbPick(src, fields) {
+        const o = {};
+        fields.forEach((f) => {
+          if (src[f] !== undefined) o[f] = src[f];
+        });
+        return o;
+      }
+      function newId() {
+        if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+          const r = (Math.random() * 16) | 0;
+          return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+        });
+      }
+
+      async function fbGetCars() {
+        const data = await fbRequest("GET", "cars");
+        return Object.values(data || {}).sort((a, b) =>
+          String(a.createdAt || "").localeCompare(String(b.createdAt || "")),
+        );
+      }
+      async function fbGetLogs(carId) {
+        if (!carId) return [];
+        const data = await fbRequest("GET", `logs/${fbSeg(carId)}`);
+        return Object.values(data || {});
+      }
+
+      // จำลอง action เดียวกับ Apps Script เพื่อให้จุดเรียกเดิม (saveCar, submitLog ฯลฯ) ไม่ต้องแก้
+      async function fbMutate(action, p) {
+        const now = new Date().toISOString();
+        switch (action) {
+          case "addCar": {
+            const id = newId();
+            await fbRequest("PUT", `cars/${fbSeg(id)}`, {
+              ...fbPick(p, FB_CAR_FIELDS),
+              id,
+              createdAt: now,
+            });
+            return { id };
+          }
+          case "updateCar":
+            await fbRequest("PATCH", `cars/${fbSeg(p.id)}`, fbPick(p, FB_CAR_FIELDS));
+            return { id: p.id };
+          case "deleteCar":
+            // ลบรถ + ประวัติทั้งหมดของรถคันนั้นใน request เดียว
+            await fbRequest("PATCH", "", {
+              [`cars/${p.id}`]: null,
+              [`logs/${p.id}`]: null,
+            });
+            return { id: p.id };
+          case "addFuelLog": {
+            const id = newId();
+            const rec = { ...fbPick(p, FB_LOG_FIELDS), id, createdAt: now };
+            rec.isFullTank = !!rec.isFullTank;
+            await fbRequest("PUT", `logs/${fbSeg(p.carId)}/${fbSeg(id)}`, rec);
+            return { id };
+          }
+          case "updateFuelLog": {
+            const old = STATE.logs.find((l) => String(l.id) === String(p.id));
+            const oldCarId = (old && old.carId) || STATE.activeCarId;
+            const fields = fbPick(p, FB_LOG_FIELDS);
+            if ("isFullTank" in fields) fields.isFullTank = !!fields.isFullTank;
+            if (p.carId && String(p.carId) !== String(oldCarId)) {
+              // ย้ายรายการไปรถอีกคัน: ลบที่เดิม + เขียนที่ใหม่ แบบ atomic
+              await fbRequest("PATCH", "", {
+                [`logs/${oldCarId}/${p.id}`]: null,
+                [`logs/${p.carId}/${p.id}`]: {
+                  ...fields,
+                  id: p.id,
+                  createdAt: (old && old.createdAt) || now,
+                },
+              });
+            } else {
+              await fbRequest("PATCH", `logs/${fbSeg(oldCarId)}/${fbSeg(p.id)}`, fields);
+            }
+            return { id: p.id };
+          }
+          case "deleteFuelLog": {
+            const old = STATE.logs.find((l) => String(l.id) === String(p.id));
+            const carId = (old && old.carId) || STATE.activeCarId;
+            await fbRequest("DELETE", `logs/${fbSeg(carId)}/${fbSeg(p.id)}`);
+            return { id: p.id };
+          }
+          default:
+            throw new Error("Unknown Firebase action: " + action);
+        }
       }
 
       // ---------------- Init ----------------
@@ -3177,20 +1326,27 @@
             .catch(() => {});
         }
 
-        if (!STATE.sheetId) {
+        if (!isDataConnected()) {
           openView("settings");
-          toast(
-            'เชื่อมต่อ Google Sheet ก่อนเริ่มใช้งาน ดูช่อง "การเชื่อมต่อ Google Sheet"',
-          );
+          toast('เลือกและเชื่อมต่อแหล่งเก็บข้อมูลก่อนเริ่มใช้งาน ดูช่อง "แหล่งเก็บข้อมูล"');
           return;
         }
         bootstrap(false);
       }
 
+      // แหล่งเก็บข้อมูลที่เลือกไว้ตั้งค่าครบพร้อมใช้งานหรือยัง
+      function isDataConnected() {
+        if (STATE.dataSource === "firebase") return !!STATE.fbUrl;
+        if (STATE.dataSource === "sheet") return !!STATE.sheetId;
+        return false;
+      }
+
       // ดึงข้อมูลผ่าน CSV เร็วกว่าแบบเดิม 10 เท่า
-      async function fetchCSV(sheetName) {
-        if (!STATE.sheetId) throw new Error("ไม่พบ Sheet ID");
-        const url = `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
+      // sheetId ระบุเองได้ (ใช้ตอนย้ายข้อมูลไป Firebase) ถ้าไม่ระบุจะใช้ของที่เชื่อมต่ออยู่
+      async function fetchCSV(sheetName, sheetId) {
+        const sid = sheetId || STATE.sheetId;
+        if (!sid) throw new Error("ไม่พบ Sheet ID");
+        const url = `https://docs.google.com/spreadsheets/d/${sid}/gviz/tq?tqx=out:csv&sheet=${sheetName}`;
         const res = await fetchWithRetry(url);
         if (!res.ok)
           throw new Error("โหลดข้อมูลล้มเหลว ตรวจสอบ Sheet ID และการแชร์");
@@ -3423,29 +1579,73 @@
         if (content) content.style.display = "block";
       }
 
+      // ถ้ารถที่เคยเลือกไว้ไม่มีในแหล่งข้อมูลนี้ (เช่นเพิ่งสลับแหล่ง) ให้ใช้คันแรกแทน
+      function pickActiveCarId(cars, guess) {
+        if (guess && cars.some((c) => String(c.id) === String(guess)))
+          return guess;
+        return cars.length ? cars[0].id : null;
+      }
+
+      // โหลดรถทั้งหมด + ประวัติ "เฉพาะรถที่เปิดอยู่"
+      //  - Firebase: อ่านรถกับประวัติของรถที่เปิดอยู่พร้อมกัน (ไม่ต้องโหลดประวัติทั้งหมด)
+      //    และไม่กลืน error เพื่อไม่ให้ดูเหมือนข้อมูลหายเมื่อเชื่อมต่อไม่ได้
+      //  - Google Sheet: ทำงานเหมือนเดิม (อ่าน CSV ทั้งสองแท็บแล้วกรอง)
+      async function loadCarsAndLogs() {
+        const guess = STATE.activeCarId;
+        if (STATE.dataSource === "firebase") {
+          const [cars, guessLogs] = await Promise.all([
+            fbGetCars(),
+            guess ? fbGetLogs(guess) : Promise.resolve([]),
+          ]);
+          const activeId = pickActiveCarId(cars, guess);
+          const logs =
+            activeId === guess
+              ? guessLogs
+              : activeId
+                ? await fbGetLogs(activeId)
+                : [];
+          return { cars, activeId, logs };
+        }
+        const [cars, rawLogs] = await Promise.all([
+          fetchCSV("Cars").catch(() => []),
+          fetchCSV("FuelLogs").catch(() => []),
+        ]);
+        const activeId = pickActiveCarId(cars, guess);
+        return {
+          cars,
+          activeId,
+          logs: rawLogs.filter((l) => String(l.carId) === String(activeId)),
+        };
+      }
+
+      // เขียนข้อความสถานะลงช่อง hint ของแหล่งข้อมูลที่ใช้งานอยู่
+      function setStatusHint(text) {
+        const el = document.getElementById(
+          STATE.dataSource === "firebase" ? "fbStatusHint" : "apiStatusHint",
+        );
+        if (el) el.textContent = text;
+      }
+
       // วางต่อท้ายฟังก์ชัน enrichLogs(...)
       async function bootstrap(showToast) {
         showHomeSkeleton();
         try {
           setTopSubtitle("กำลังโหลดข้อมูลด่วน...");
 
-          // โหลด Cars และ Logs ผ่าน CSV ส่วนราคาน้ำมันดึงจาก Backend เช่นเดิม
-          const [cars, rawLogs, oilData] = await Promise.all([
-            fetchCSV("Cars").catch(() => []),
-            fetchCSV("FuelLogs").catch(() => []),
+          // โหลดรถ + ประวัติของรถที่เปิดอยู่ จากแหล่งข้อมูลที่เลือก (Sheet หรือ Firebase)
+          // ส่วนราคาน้ำมันดึงจาก Backend เช่นเดิม
+          const [loaded, oilData] = await Promise.all([
+            loadCarsAndLogs(),
             getOilPricesFast(),
           ]);
 
-          STATE.cars = cars;
+          STATE.cars = loaded.cars;
           STATE.oilPrices = oilData;
-          if (!STATE.activeCarId && STATE.cars.length)
-            STATE.activeCarId = STATE.cars[0].id;
-
-          let carLogs = rawLogs.filter(
-            (l) => String(l.carId) === String(STATE.activeCarId),
-          );
+          STATE.activeCarId = loaded.activeId;
+          if (loaded.activeId)
+            localStorage.setItem("ff_active_car", loaded.activeId);
           const activeCar = STATE.cars.find((c) => c.id === STATE.activeCarId);
-          STATE.logs = enrichLogs(carLogs, activeCar && activeCar.tankSize);
+          STATE.logs = enrichLogs(loaded.logs, activeCar && activeCar.tankSize);
 
           populateMainMonthDropdown();
 
@@ -3468,13 +1668,12 @@
 
           if (showToast) toast("โหลดข้อมูลล่าสุดเรียบร้อย");
           setTopSubtitle("บันทึกการเติมน้ำมัน");
-          document.getElementById("apiStatusHint").textContent =
-            "✅ เชื่อมต่อสำเร็จ";
+          setStatusHint("✅ เชื่อมต่อสำเร็จ");
         } catch (err) {
           const msg = friendlyErrorMessage(err);
           setTopSubtitle("เชื่อมต่อไม่สำเร็จ");
           toast("Error: " + msg);
-          document.getElementById("apiStatusHint").textContent = "⚠️ " + msg;
+          setStatusHint("⚠️ " + msg);
           hideHomeSkeleton();
         }
       }
@@ -3688,25 +1887,287 @@
         return null;
       }
 
-      // ปรับหน้าตาช่อง "การเชื่อมต่อ Google Sheet" ให้ตรงกับสถานะปัจจุบัน:
-      // - เชื่อมต่ออยู่แล้ว -> ล็อกช่องกรอก (แก้ไขตรงๆ ไม่ได้) + ปุ่มเปลี่ยนเป็น
-      //   "เปลี่ยนลิงก์ Google Sheet" (ต้องผ่าน modal ยืนยันก่อนเสมอ)
-      // - ยังไม่เชื่อมต่อ -> ช่องกรอกว่าง แก้ไขได้ปกติ + ปุ่ม "เชื่อมต่อ"
+      // วาดส่วน "แหล่งเก็บข้อมูล" ในหน้าตั้งค่าให้ตรงกับสถานะปัจจุบัน
+      // (ชื่อฟังก์ชันคงเดิมเพราะถูกเรียกจากหลายจุด)
+      //  - แท็บที่เปิดดู (settingsTab) แยกจากแหล่งที่ใช้งานจริง (dataSource)
+      //  - เชื่อมต่อแล้ว -> ล็อกช่องกรอก + ปุ่มเปลี่ยนเป็น "เปลี่ยน..." (ต้องยืนยันก่อนเสมอ)
+      //  - เชื่อมต่อไว้แต่ไม่ได้ใช้งาน -> มีปุ่ม "ใช้... เป็นแหล่งข้อมูล"
       function updateSheetConnectionUI() {
-        const input = document.getElementById("sheetIdInput");
-        const btn = document.getElementById("connectSheetBtn");
-        const hint = document.getElementById("apiStatusHint");
-        if (!input || !btn) return;
-        if (STATE.sheetId) {
-          input.value = `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/edit`;
-          input.readOnly = true;
-          btn.textContent = "เปลี่ยนลิงก์ Google Sheet";
-          if (hint) hint.textContent = "✅ เชื่อมต่อกับ Google Sheet อยู่แล้ว";
-        } else {
-          input.value = "";
-          input.readOnly = false;
-          btn.textContent = "เชื่อมต่อ";
-          if (hint) hint.textContent = "ยังไม่ได้เชื่อมต่อ Google Sheet";
+        const active = STATE.dataSource;
+        const tab = STATE.settingsTab || active || "sheet";
+        const $ = (id) => document.getElementById(id);
+
+        document
+          .querySelectorAll("#sourceTabs button")
+          .forEach((b) => b.classList.toggle("active", b.dataset.src === tab));
+        if ($("panelSheet"))
+          $("panelSheet").style.display = tab === "sheet" ? "block" : "none";
+        if ($("panelFirebase"))
+          $("panelFirebase").style.display = tab === "firebase" ? "block" : "none";
+
+        const names = { sheet: "Google Sheet", firebase: "Firebase Realtime Database" };
+        const activeReady = isDataConnected();
+        if ($("sourceActiveHint"))
+          $("sourceActiveHint").textContent = activeReady
+            ? `ตอนนี้ใช้งาน: ${names[active]}`
+            : "ยังไม่ได้เลือกแหล่งเก็บข้อมูล เลือกแท็บแล้วเชื่อมต่อเพื่อเริ่มใช้งาน";
+
+        // ---- Google Sheet ----
+        const input = $("sheetIdInput");
+        const btn = $("connectSheetBtn");
+        const hint = $("apiStatusHint");
+        if (input && btn) {
+          if (STATE.sheetId) {
+            input.value = `https://docs.google.com/spreadsheets/d/${STATE.sheetId}/edit`;
+            input.readOnly = true;
+            btn.textContent = "เปลี่ยนลิงก์ Google Sheet";
+            if (hint)
+              hint.textContent =
+                active === "sheet"
+                  ? "✅ เชื่อมต่อกับ Google Sheet อยู่แล้ว"
+                  : "เชื่อมต่อไว้แล้ว แต่ตอนนี้ใช้แหล่งข้อมูลอื่นอยู่";
+          } else {
+            if (input.readOnly) input.value = "";
+            input.readOnly = false;
+            btn.textContent = "เชื่อมต่อ";
+            if (hint) hint.textContent = "ยังไม่ได้เชื่อมต่อ Google Sheet";
+          }
+          $("useSheetBtn").style.display =
+            STATE.sheetId && active !== "sheet" ? "block" : "none";
+        }
+
+        // ---- Firebase ----
+        const fbUrlEl = $("fbUrlInput");
+        const fbAuthEl = $("fbAuthInput");
+        const fbBtn = $("connectFbBtn");
+        const fbHint = $("fbStatusHint");
+        if (fbUrlEl && fbAuthEl && fbBtn) {
+          if (STATE.fbUrl) {
+            fbUrlEl.value = STATE.fbUrl;
+            fbUrlEl.readOnly = true;
+            fbAuthEl.value = STATE.fbAuth ? "••••••••••" : "";
+            fbAuthEl.readOnly = true;
+            fbBtn.textContent = "เปลี่ยนการเชื่อมต่อ Firebase";
+            if (fbHint)
+              fbHint.textContent =
+                active === "firebase"
+                  ? "✅ เชื่อมต่อกับ Firebase อยู่แล้ว"
+                  : "เชื่อมต่อไว้แล้ว แต่ตอนนี้ใช้แหล่งข้อมูลอื่นอยู่";
+          } else {
+            if (fbUrlEl.readOnly) {
+              fbUrlEl.value = "";
+              fbAuthEl.value = "";
+            }
+            fbUrlEl.readOnly = false;
+            fbAuthEl.readOnly = false;
+            fbBtn.textContent = "เชื่อมต่อ";
+            if (fbHint) fbHint.textContent = "ยังไม่ได้เชื่อมต่อ Firebase";
+          }
+          $("useFbBtn").style.display =
+            STATE.fbUrl && active !== "firebase" ? "block" : "none";
+          $("migrateFbBtn").style.display = STATE.fbUrl ? "block" : "none";
+        }
+      }
+
+      function selectSourceTab(src) {
+        STATE.settingsTab = src;
+        updateSheetConnectionUI();
+      }
+
+      // สลับแหล่งข้อมูลที่ใช้งาน (ต้องเชื่อมต่อแหล่งนั้นไว้แล้ว) แล้วโหลดข้อมูลใหม่
+      async function activateSource(src) {
+        if (STATE.dataSource === src) return;
+        if (src === "sheet" && !STATE.sheetId) return;
+        if (src === "firebase" && !STATE.fbUrl) return;
+        STATE.dataSource = src;
+        localStorage.setItem("ff_data_source", src);
+        STATE.cars = [];
+        STATE.logs = [];
+        updateSheetConnectionUI();
+        toast(`สลับไปใช้ ${src === "sheet" ? "Google Sheet" : "Firebase"} แล้ว กำลังโหลดข้อมูล...`);
+        await bootstrap(true);
+      }
+
+      // ---------------- Firebase connect / disconnect / migrate ----------------
+      function handleFirebaseConnectClick() {
+        if (STATE.fbUrl) disconnectFirebase();
+        else connectFirebase();
+      }
+
+      async function connectFirebase() {
+        const urlEl = document.getElementById("fbUrlInput");
+        const authEl = document.getElementById("fbAuthInput");
+        const btn = document.getElementById("connectFbBtn");
+        const hint = document.getElementById("fbStatusHint");
+
+        if (!urlEl.value.trim()) {
+          toast("กรุณาวาง Database URL ของ Firebase ก่อน");
+          return;
+        }
+        const url = normalizeFirebaseUrl(urlEl.value);
+        if (!url) {
+          toast("Database URL ไม่ถูกต้อง (ต้องเป็น https://...firebasedatabase.app หรือ ...firebaseio.com)");
+          hint.textContent = "⚠️ อ่าน URL ไม่ออก กรุณาตรวจสอบอีกครั้ง";
+          return;
+        }
+        const auth = authEl.value.trim();
+        const cfg = { url, auth };
+
+        btn.disabled = true;
+        btn.textContent = "กำลังเชื่อมต่อ...";
+        hint.textContent = "⏳ กำลังตรวจสอบการเชื่อมต่อและสิทธิ์อ่าน/เขียน...";
+        try {
+          // ทดสอบทั้งเขียนและอ่าน เพื่อให้รู้ทันทีถ้า Rules/Secret ไม่ถูกต้อง
+          await fbRequest(
+            "PUT",
+            "meta",
+            { app: "full-fuel", schema: 1, connectedAt: new Date().toISOString() },
+            cfg,
+          );
+          await fbRequest("GET", "cars", undefined, cfg);
+
+          STATE.fbUrl = url;
+          STATE.fbAuth = auth;
+          localStorage.setItem("ff_fb_url", url);
+          if (auth) localStorage.setItem("ff_fb_auth", auth);
+          else localStorage.removeItem("ff_fb_auth");
+
+          STATE.dataSource = "firebase";
+          localStorage.setItem("ff_data_source", "firebase");
+          STATE.cars = [];
+          STATE.logs = [];
+          updateSheetConnectionUI();
+
+          hint.textContent = "✅ เชื่อมต่อสำเร็จ";
+          toast("เชื่อมต่อ Firebase สำเร็จ กำลังโหลดข้อมูล...");
+          await bootstrap(true);
+        } catch (err) {
+          const msg = friendlyErrorMessage(err);
+          hint.textContent = "⚠️ เชื่อมต่อไม่สำเร็จ: " + msg;
+          toast("เชื่อมต่อไม่สำเร็จ: " + msg);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = STATE.fbUrl ? "เปลี่ยนการเชื่อมต่อ Firebase" : "เชื่อมต่อ";
+        }
+      }
+
+      function disconnectFirebase() {
+        if (
+          !confirm(
+            "ยกเลิกการเชื่อมต่อ Firebase นี้? (ข้อมูลบน Firebase จะไม่ถูกลบ) แล้วคุณสามารถวาง URL ใหม่หรือสลับไปใช้ Google Sheet ได้",
+          )
+        )
+          return;
+        const wasActive = STATE.dataSource === "firebase";
+        STATE.fbUrl = "";
+        STATE.fbAuth = "";
+        localStorage.removeItem("ff_fb_url");
+        localStorage.removeItem("ff_fb_auth");
+        if (wasActive) {
+          STATE.cars = [];
+          STATE.logs = [];
+          if (STATE.sheetId) {
+            STATE.dataSource = "sheet";
+            localStorage.setItem("ff_data_source", "sheet");
+            updateSheetConnectionUI();
+            toast("ยกเลิก Firebase แล้ว สลับกลับไปใช้ Google Sheet");
+            bootstrap(true);
+            return;
+          }
+          STATE.dataSource = "";
+          localStorage.removeItem("ff_data_source");
+          STATE.activeCarId = null;
+          localStorage.removeItem("ff_active_car");
+        }
+        updateSheetConnectionUI();
+        toast("ยกเลิกการเชื่อมต่อ Firebase แล้ว");
+      }
+
+      // คัดลอกข้อมูลรถ+ประวัติทั้งหมดจาก Google Sheet ไป Firebase
+      // ใช้ id เดิม จึงรันซ้ำได้โดยไม่เกิดข้อมูลซ้ำ และไม่ลบอะไรในชีต
+      async function migrateSheetToFirebase() {
+        if (!STATE.fbUrl) return;
+        let sid = STATE.sheetId;
+        if (!sid) {
+          const raw = prompt("วางลิงก์ Google Sheet ที่ต้องการย้ายข้อมูลมา Firebase");
+          if (!raw) return;
+          sid = extractSheetId(raw.trim());
+          if (!sid) {
+            toast("รูปแบบลิงก์ Google Sheet ไม่ถูกต้อง");
+            return;
+          }
+        }
+        if (
+          !confirm(
+            "คัดลอกข้อมูลรถและประวัติการเติมทั้งหมดจาก Google Sheet ไปยัง Firebase?\n(ไม่ลบข้อมูลในชีต และกดซ้ำได้โดยไม่เกิดข้อมูลซ้ำ)",
+          )
+        )
+          return;
+
+        const btn = document.getElementById("migrateFbBtn");
+        const hint = document.getElementById("fbStatusHint");
+        btn.disabled = true;
+        try {
+          hint.textContent = "⏳ กำลังอ่านข้อมูลจาก Google Sheet...";
+          const [cars, logs] = await Promise.all([
+            fetchCSV("Cars", sid),
+            fetchCSV("FuelLogs", sid),
+          ]);
+
+          const validKey = (k) => /^[^.$#\[\]\/]+$/.test(String(k || ""));
+          const num = (v) => Number(v) || 0;
+          const updates = {};
+          let nCars = 0, nLogs = 0, skipped = 0;
+
+          cars.forEach((c) => {
+            if (!c.id) return; // แถวว่าง
+            if (!validKey(c.id)) { skipped++; return; }
+            updates[`cars/${c.id}`] = {
+              id: c.id, name: c.name || "", brand: c.brand || "", model: c.model || "",
+              year: c.year || "", fuelType: c.fuelType || "", tankSize: num(c.tankSize),
+              color: c.color || "", icon: c.icon || "", createdAt: c.createdAt || "",
+            };
+            nCars++;
+          });
+          logs.forEach((l) => {
+            if (!l.id) return;
+            if (!validKey(l.id) || !validKey(l.carId)) { skipped++; return; }
+            updates[`logs/${l.carId}/${l.id}`] = {
+              id: l.id, carId: l.carId, date: l.date || "", odometer: num(l.odometer),
+              fuelType: l.fuelType || "", fuelIcon: l.fuelIcon || "",
+              pricePerLiter: num(l.pricePerLiter), liters: num(l.liters),
+              totalCost: num(l.totalCost),
+              isFullTank: String(l.isFullTank).toUpperCase() === "TRUE",
+              note: l.note || "", createdAt: l.createdAt || "",
+            };
+            nLogs++;
+          });
+
+          const keys = Object.keys(updates);
+          if (!keys.length) {
+            hint.textContent = "ไม่พบข้อมูลในชีตที่จะย้าย";
+            toast("ไม่พบข้อมูลในชีตที่จะย้าย");
+            return;
+          }
+          const CHUNK = 400;
+          for (let i = 0; i < keys.length; i += CHUNK) {
+            const part = {};
+            keys.slice(i, i + CHUNK).forEach((k) => (part[k] = updates[k]));
+            hint.textContent = `⏳ กำลังอัปโหลด ${Math.min(i + CHUNK, keys.length)}/${keys.length} รายการ...`;
+            await fbRequest("PATCH", "", part);
+          }
+
+          const summary = `✅ ย้ายข้อมูลสำเร็จ: รถ ${nCars} คัน, ประวัติการเติม ${nLogs} รายการ` +
+            (skipped ? ` (ข้าม ${skipped} แถวที่ id ไม่ถูกต้อง)` : "");
+          toast("ย้ายข้อมูลสำเร็จ");
+          if (STATE.dataSource === "firebase") await bootstrap(true);
+          hint.textContent = summary;
+        } catch (err) {
+          const msg = friendlyErrorMessage(err);
+          hint.textContent = "⚠️ ย้ายข้อมูลไม่สำเร็จ: " + msg;
+          toast("ย้ายข้อมูลไม่สำเร็จ: " + msg);
+        } finally {
+          btn.disabled = false;
         }
       }
 
@@ -3785,6 +2246,8 @@
           const isNewSheet = STATE.sheetId !== id;
           STATE.sheetId = id;
           localStorage.setItem("ff_sheet_id", id);
+          STATE.dataSource = "sheet";
+          localStorage.setItem("ff_data_source", "sheet");
           if (isNewSheet) {
             STATE.activeCarId = null;
             localStorage.removeItem("ff_active_car");
@@ -3797,6 +2260,7 @@
           sheetInput.readOnly = true;
           sheetInput.value = `https://docs.google.com/spreadsheets/d/${id}/edit`;
 
+          updateSheetConnectionUI();
           hint.textContent = "✅ เชื่อมต่อสำเร็จ สร้างตารางพร้อมใช้งานแล้ว";
           toast("เชื่อมต่อ Google Sheet สำเร็จ กำลังโหลดข้อมูล...");
           await bootstrap(true);
