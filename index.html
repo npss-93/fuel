@@ -793,7 +793,7 @@
           <div class="section-title">เกี่ยวกับ</div>
           <div class="card">
             <div style="font-weight: 700; margin-bottom: 4px">
-              Full Fuel v1.1
+              Full Fuel v1.6
             </div>
             <div
               class="ts"
@@ -999,6 +999,25 @@
           onclick="closeChangeSheetModal()"
         >
           ยกเลิก
+        </button>
+      </div>
+    </div>
+
+    <!-- ============ OFFLINE / NETWORK ERROR MODAL ============ -->
+    <!-- ไม่มีปุ่มปิด/แตะพื้นหลังเพื่อปิด: ผู้ใช้ต้องเลือก "ลองใหม่" หรือทางเลือกอีกปุ่ม -->
+    <div class="overlay" id="offlineModalOverlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div style="text-align: center; margin: 6px 0 18px">
+          <div style="font-size: 44px; line-height: 1; margin-bottom: 10px" aria-hidden="true">📡</div>
+          <div style="font-size: 18px; font-weight: 700; margin-bottom: 8px">เชื่อมต่อเครือข่ายไม่ได้</div>
+          <div class="ts" id="offlineModalMsg" style="color: var(--text-muted); line-height: 1.6"></div>
+        </div>
+        <button class="btn btn-primary" id="offlineRetryBtn" onclick="retryAfterOffline()">
+          ลองใหม่
+        </button>
+        <button class="btn btn-outline" id="offlineSecondaryBtn" style="margin-top: 10px" onclick="offlineSecondaryAction()">
+          ไปหน้าตั้งค่า
         </button>
       </div>
     </div>
@@ -1893,6 +1912,58 @@
         if (el) el.textContent = text;
       }
 
+      // ---------------- ออฟไลน์ / เชื่อมต่อไม่ได้: popup + ลองใหม่ ----------------
+      // แสดงเมื่อ (1) อุปกรณ์ออฟไลน์ หรือ (2) โหลดข้อมูลตอนเปิดแอปไม่สำเร็จเพราะเครือข่าย
+      // พื้นหลังที่เห็นหลัง popup คือ skeleton (ยังไม่มีข้อมูล) หรือข้อมูลล่าสุดที่บันทึกไว้ในเครื่อง
+      let offlineShown = false;
+      let offlineHasData = false;
+      function showOfflineModal(hasData) {
+        offlineShown = true;
+        offlineHasData = !!hasData;
+        document.getElementById("offlineModalMsg").textContent = hasData
+          ? "ตอนนี้แสดงข้อมูลล่าสุดที่บันทึกไว้ในเครื่อง จะเพิ่มหรือแก้ไขข้อมูลได้เมื่อกลับมาออนไลน์ แอปจะโหลดข้อมูลใหม่ให้เองเมื่อเชื่อมต่อได้"
+          : "ตรวจสอบอินเทอร์เน็ตแล้วกดลองใหม่ ข้อมูลของคุณยังอยู่ครบ แอปจะโหลดให้เองเมื่อกลับมาออนไลน์";
+        document.getElementById("offlineSecondaryBtn").textContent = hasData
+          ? "ดูข้อมูลที่บันทึกไว้"
+          : "ไปหน้าตั้งค่า";
+        document.getElementById("offlineModalOverlay").classList.add("open");
+      }
+      function hideOfflineModal() {
+        if (!offlineShown) return;
+        offlineShown = false;
+        closeOverlay("offlineModalOverlay");
+      }
+      async function retryAfterOffline() {
+        const btn = document.getElementById("offlineRetryBtn");
+        if (btn.disabled) return;
+        if (!isDataConnected()) {
+          hideOfflineModal();
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "กำลังลองใหม่...";
+        try {
+          // สำเร็จเมื่อไหร่ bootstrap จะปิด popup ให้เอง ถ้ายังไม่ได้ popup จะค้างอยู่ให้ลองอีก
+          await bootstrap(false, STATE.cars.length > 0);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = "ลองใหม่";
+        }
+      }
+      function offlineSecondaryAction() {
+        hideOfflineModal();
+        if (!offlineHasData) openView("settings");
+      }
+      window.addEventListener("offline", () => {
+        if (isDataConnected()) showOfflineModal(STATE.cars.length > 0);
+      });
+      window.addEventListener("online", () => {
+        if (offlineShown) {
+          toast("กลับมาออนไลน์แล้ว กำลังโหลดข้อมูล...");
+          retryAfterOffline();
+        }
+      });
+
       // วาดทุกส่วนของแอปจาก STATE ปัจจุบัน (ใช้ทั้งตอนวาดจากสแนปช็อตและจากข้อมูลจริง)
       function paintAll() {
         populateMainMonthDropdown();
@@ -1914,7 +1985,8 @@
         populateLogCarSelect();
       }
 
-      async function bootstrap(showToast) {
+      // keepContent=true: มีเนื้อหาบนจออยู่แล้ว (เช่นลองใหม่หลังออฟไลน์) ไม่ต้องสลับกลับเป็น skeleton
+      async function bootstrap(showToast, keepContent) {
         // 1) ถ้ามีสแนปช็อตจากครั้งก่อน วาดหน้าจากมันทันที (ไม่ต้องรอเครือข่าย)
         //    ตอนรีเฟรชที่มีข้อมูลบนจออยู่แล้ว (STATE.cars ไม่ว่าง) ใช้เส้นทางเดิม
         const snap = STATE.cars.length ? null : readSnapshot();
@@ -1925,13 +1997,22 @@
           STATE.logs = snap.logs;
           paintAll();
           setTopSubtitle("กำลังอัปเดตข้อมูล...");
-        } else {
+        } else if (!keepContent) {
           showHomeSkeleton();
           setTopSubtitle("กำลังโหลดข้อมูลด่วน...");
           if (!STATE.oilPrices) {
             const lbl = document.getElementById("oilDateLabel");
             if (lbl) lbl.textContent = "กำลังโหลด...";
           }
+        }
+        // หน้าจอมีเนื้อหาจริงอยู่แล้วหรือไม่ (จากสแนปช็อต หรือที่ค้างมาจากรอบก่อน)
+        const alreadyPainted = !!snap || !!keepContent;
+
+        // ออฟไลน์ชัด ๆ: ไม่ต้องรอ retry/timeout ของเครือข่ายหลายรอบ ขึ้น popup ทันที
+        if (navigator.onLine === false) {
+          setTopSubtitle("ออฟไลน์");
+          showOfflineModal(alreadyPainted);
+          return;
         }
 
         // 2) ราคาน้ำมันโหลดในพื้นหลัง เริ่มทันทีแต่ "ไม่รอ" (ไม่บล็อกหน้าแรก)
@@ -1942,7 +2023,7 @@
           const loaded = await loadCarsAndLogs();
 
           // ถ้าวาดจากสแนปช็อตไปแล้ว: เทียบกับข้อมูลจริงที่เพิ่งโหลดมา
-          const painted = snap
+          const painted = alreadyPainted
             ? JSON.stringify([STATE.activeCarId, STATE.cars, STATE.logs])
             : null;
 
@@ -1958,7 +2039,7 @@
             painted === JSON.stringify([STATE.activeCarId, STATE.cars, STATE.logs]);
           if (!unchanged) {
             // ข้อมูลเปลี่ยนจริงถึงวาดซ้ำ และวาดแบบไม่เล่น animation (เล่นไปแล้วตอนวาดจากสแนปช็อต)
-            STATE.quietRepaint = !!snap;
+            STATE.quietRepaint = alreadyPainted;
             try {
               paintAll();
             } finally {
@@ -1966,6 +2047,7 @@
             }
           }
           saveSnapshot();
+          hideOfflineModal(); // ถ้า popup ออฟไลน์เปิดค้างอยู่ ปิดเมื่อโหลดสำเร็จ
 
           if (showToast) toast("โหลดข้อมูลล่าสุดเรียบร้อย");
           setTopSubtitle("บันทึกการเติมน้ำมัน");
@@ -1979,10 +2061,17 @@
           });
         } catch (err) {
           const msg = friendlyErrorMessage(err);
-          setTopSubtitle(snap ? "ออฟไลน์ (แสดงข้อมูลล่าสุดที่บันทึกไว้)" : "เชื่อมต่อไม่สำเร็จ");
-          toast("Error: " + msg);
           setStatusHint("⚠️ " + msg);
-          hideHomeSkeleton();
+          if (isNetworkError(err)) {
+            // ปัญหาเครือข่าย: ขึ้น popup ให้ลองใหม่ และคง skeleton (หรือข้อมูลที่บันทึกไว้) ไว้เป็นพื้นหลัง
+            setTopSubtitle(alreadyPainted ? "ออฟไลน์ (แสดงข้อมูลล่าสุดที่บันทึกไว้)" : "เชื่อมต่อไม่สำเร็จ");
+            showOfflineModal(alreadyPainted);
+          } else {
+            // ปัญหาอื่น (เช่น สิทธิ์ถูกปฏิเสธ/ตั้งค่าผิด): ลองใหม่ไม่ช่วย แจ้งข้อความตามจริง
+            setTopSubtitle(alreadyPainted ? "แสดงข้อมูลล่าสุดที่บันทึกไว้" : "เชื่อมต่อไม่สำเร็จ");
+            toast("Error: " + msg);
+            hideHomeSkeleton();
+          }
         }
       }
 
@@ -2275,14 +2364,14 @@
             STATE.fbUrl && active !== "firebase" ? "block" : "none";
         }
 
-        // ---- ปุ่มคัดลอกข้อมูล: ต้องเชื่อมต่อทั้งสองแหล่งก่อน ----
+        // ---- ปุ่มซิงค์ข้อมูล: ต้องเชื่อมต่อทั้งสองแหล่งก่อน และต้องมีแหล่งที่ใช้งานอยู่ ----
         const both = !!(STATE.sheetId && STATE.fbUrl);
-        const dirNames = { sheet: "Google Sheet", firebase: "Firebase" };
         const hasActive = active === "sheet" || active === "firebase";
-        if ($("syncBtn")) $("syncBtn").disabled = !both || !hasActive || copyBusy;
-        if ($("syncBtn")) {
+        const syncBtn = $("syncBtn");
+        if (syncBtn) {
+          syncBtn.disabled = !both || !hasActive || copyBusy;
           const shortNames = { sheet: "Google Sheet", firebase: "Firebase" };
-          $("syncBtn").textContent = hasActive
+          syncBtn.textContent = hasActive
             ? `ซิงค์ข้อมูล (${shortNames[active]} → ${shortNames[active === "sheet" ? "firebase" : "sheet"]})`
             : "ซิงค์ข้อมูล";
         }
