@@ -793,7 +793,7 @@
           <div class="section-title">เกี่ยวกับ</div>
           <div class="card">
             <div style="font-weight: 700; margin-bottom: 4px">
-              Full Fuel v1.5
+              Full Fuel v1.1
             </div>
             <div
               class="ts"
@@ -1033,16 +1033,207 @@
       const API_URL =
         "https://script.google.com/macros/s/AKfycbzNvfUpjNQe2Cb4r8sjZtepcHQL8CoBVQxNPTbXmhD0UaT7u-LO60xwNcKwUchpz5xPXg/exec";
 
+      // ---------------- Secure storage: เก็บความลับแบบเข้ารหัส ----------------
+      // Sheet ID, Firebase URL และ Database Secret ไม่ถูกเก็บเป็นข้อความธรรมดาใน localStorage อีกต่อไป
+      //  - เข้ารหัสด้วย AES-GCM 256 บิต ผ่าน Web Crypto (มี IV สุ่มทุกครั้ง + ผูกกับชื่อฟิลด์ กันสลับ/แก้ข้อมูล)
+      //  - กุญแจเป็นแบบ "non-extractable" เก็บใน IndexedDB: โค้ดฝั่งเว็บอ่านค่ากุญแจดิบ ๆ ออกมาไม่ได้
+      //    ใน localStorage จึงมีแต่ข้อมูลที่เข้ารหัสแล้ว (คัดลอก/ส่งออกไปก็ถอดรหัสไม่ได้ถ้าไม่มีกุญแจ)
+      //  - ถ้าเบราว์เซอร์เข้ารหัสไม่ได้ (เช่นไม่ใช่ HTTPS) จะ "ไม่บันทึก" แทนที่จะเก็บเป็นข้อความธรรมดา
+      const SecureStore = (() => {
+        const DB_NAME = "ff_secure";
+        const STORE = "keys";
+        const KEY_ID = "master";
+        const PREFIX = "ffx_"; // คีย์ใน localStorage ที่เก็บ ciphertext
+        const enc = new TextEncoder();
+        let keyPromise = null;
+
+        const supported = () =>
+          !!(window.crypto && crypto.subtle && window.indexedDB);
+
+        function openDb() {
+          return new Promise((resolve, reject) => {
+            const req = indexedDB.open(DB_NAME, 1);
+            req.onupgradeneeded = () => req.result.createObjectStore(STORE);
+            req.onsuccess = () => resolve(req.result);
+            req.onerror = () => reject(req.error);
+          });
+        }
+        function idbGet(db, key) {
+          return new Promise((resolve, reject) => {
+            const r = db.transaction(STORE, "readonly").objectStore(STORE).get(key);
+            r.onsuccess = () => resolve(r.result);
+            r.onerror = () => reject(r.error);
+          });
+        }
+        async function loadKey() {
+          const db = await openDb();
+          try {
+            const existing = await idbGet(db, KEY_ID);
+            if (existing) return existing;
+            const fresh = await crypto.subtle.generateKey(
+              { name: "AES-GCM", length: 256 },
+              false, // non-extractable
+              ["encrypt", "decrypt"],
+            );
+            // เขียนแบบ "ถ้ายังไม่มี" ใน transaction เดียว กันสองแท็บสร้างกุญแจคนละดอกพร้อมกัน
+            return await new Promise((resolve, reject) => {
+              const tx = db.transaction(STORE, "readwrite");
+              const st = tx.objectStore(STORE);
+              let result = fresh;
+              const g = st.get(KEY_ID);
+              g.onsuccess = () => {
+                if (g.result) result = g.result;
+                else st.put(fresh, KEY_ID);
+              };
+              tx.oncomplete = () => resolve(result);
+              tx.onerror = tx.onabort = () => reject(tx.error);
+            });
+          } finally {
+            db.close();
+          }
+        }
+        function getKey() {
+          if (!keyPromise)
+            keyPromise = loadKey().catch((e) => {
+              keyPromise = null;
+              throw e;
+            });
+          return keyPromise;
+        }
+
+        const toB64 = (u8) => btoa(String.fromCharCode(...u8));
+        const fromB64 = (b) => Uint8Array.from(atob(b), (c) => c.charCodeAt(0));
+
+        async function encrypt(name, plain) {
+          const key = await getKey();
+          const iv = crypto.getRandomValues(new Uint8Array(12));
+          const ct = new Uint8Array(
+            await crypto.subtle.encrypt(
+              { name: "AES-GCM", iv, additionalData: enc.encode(name) },
+              key,
+              enc.encode(plain),
+            ),
+          );
+          const out = new Uint8Array(iv.length + ct.length);
+          out.set(iv);
+          out.set(ct, iv.length);
+          return "v1:" + toB64(out);
+        }
+        // คืน string ถ้าถอดรหัสได้, null ถ้าถอดไม่ได้ (กุญแจหาย/ข้อมูลถูกแก้)
+        async function decrypt(name, token) {
+          try {
+            if (!token.startsWith("v1:")) return null;
+            const raw = fromB64(token.slice(3));
+            const key = await getKey();
+            const pt = await crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: raw.slice(0, 12), additionalData: enc.encode(name) },
+              key,
+              raw.slice(12),
+            );
+            return new TextDecoder().decode(pt);
+          } catch (e) {
+            return null;
+          }
+        }
+
+        return {
+          supported,
+          // คืน true ถ้าบันทึกสำเร็จ (ค่าว่าง = ลบ)
+          async set(name, value) {
+            if (!value) {
+              localStorage.removeItem(PREFIX + name);
+              return true;
+            }
+            if (!supported()) return false;
+            try {
+              localStorage.setItem(PREFIX + name, await encrypt(name, value));
+              return true;
+            } catch (e) {
+              console.warn("เข้ารหัสไม่สำเร็จ", e);
+              return false;
+            }
+          },
+          // "" = ไม่มีค่า, null = มีค่าแต่ถอดรหัสไม่ได้ (ลบของเสียทิ้งให้)
+          async get(name) {
+            const token = localStorage.getItem(PREFIX + name);
+            if (!token) return "";
+            if (!supported()) return null;
+            const v = await decrypt(name, token);
+            if (v === null) localStorage.removeItem(PREFIX + name);
+            return v;
+          },
+          remove(name) {
+            localStorage.removeItem(PREFIX + name);
+          },
+        };
+      })();
+
+      // แท็กสุ่ม (ไม่ใช่ความลับ) ใช้ระบุว่าสแนปช็อตในเครื่องเป็นของการเชื่อมต่อไหน
+      // จะได้ไม่ต้องเก็บ Sheet ID/URL จริงไว้ในสแนปช็อต เปลี่ยนการเชื่อมต่อเมื่อไหร่แท็กเปลี่ยน
+      const SECRET_TAG_KEYS = { sheet_id: "ff_tag_sheet", fb_url: "ff_tag_fb" };
+      let secureWarned = false;
+      async function persistSecret(name, value) {
+        const ok = await SecureStore.set(name, value);
+        const tagKey = SECRET_TAG_KEYS[name];
+        if (tagKey && value && ok) localStorage.setItem(tagKey, newId());
+        if (value && !ok && !secureWarned) {
+          secureWarned = true;
+          toast("เบราว์เซอร์นี้เก็บข้อมูลแบบเข้ารหัสไม่ได้ (ต้องเปิดผ่าน HTTPS) จึงไม่บันทึกการเชื่อมต่อไว้ ต้องกรอกใหม่ทุกครั้งที่เปิดแอป");
+        }
+        return ok;
+      }
+      function removeSecret(name) {
+        SecureStore.remove(name);
+        const tagKey = SECRET_TAG_KEYS[name];
+        if (tagKey) localStorage.removeItem(tagKey);
+      }
+
+      // โหลดความลับที่เข้ารหัสไว้เข้า STATE + ย้ายค่าเดิมที่เคยเก็บเป็นข้อความธรรมดามาเข้ารหัส
+      async function loadSecrets() {
+        const map = [
+          ["sheet_id", "sheetId", "ff_sheet_id"],
+          ["fb_url", "fbUrl", "ff_fb_url"],
+          ["fb_auth", "fbAuth", "ff_fb_auth"],
+        ];
+        const lost = [];
+        for (const [name, prop, legacyKey] of map) {
+          let value = "";
+          const legacy = localStorage.getItem(legacyKey);
+          if (legacy) {
+            // ค่าเดิมแบบข้อความธรรมดา: เข้ารหัสเก็บใหม่ แล้วลบของเดิมทิ้งเสมอ
+            // (ถ้าเข้ารหัสไม่ได้ จะใช้ค่านี้ในหน่วยความจำแค่รอบนี้)
+            await persistSecret(name, legacy);
+            localStorage.removeItem(legacyKey);
+            value = legacy;
+          } else {
+            value = await SecureStore.get(name);
+            if (value === null) {
+              lost.push(name);
+              value = "";
+            }
+          }
+          STATE[prop] = value;
+        }
+        // ผู้ใช้เดิมที่เคยมีแค่ Sheet ID: บันทึกแหล่งข้อมูลที่ใช้งานไว้ เพราะ ff_sheet_id ถูกย้ายไปแล้ว
+        if (STATE.dataSource && !localStorage.getItem("ff_data_source"))
+          localStorage.setItem("ff_data_source", STATE.dataSource);
+        // ลบสแนปช็อตรุ่นเก่าที่เคยเก็บ Sheet ID/URL เป็นข้อความธรรมดา
+        localStorage.removeItem("ff_snapshot_v1");
+        if (lost.length)
+          toast("ข้อมูลการเชื่อมต่อที่เข้ารหัสไว้อ่านไม่ได้ (อาจถูกล้างข้อมูลเบราว์เซอร์บางส่วน) กรุณาเชื่อมต่อใหม่");
+      }
+
       // ---------------- State ----------------
       let STATE = {
-        sheetId: localStorage.getItem("ff_sheet_id") || "",
+        // ความลับ 3 ตัวนี้ (sheetId/fbUrl/fbAuth) โหลดแบบเข้ารหัสใน loadSecrets() ตอน init
+        sheetId: "",
         // แหล่งเก็บข้อมูลที่ใช้งานอยู่: "sheet" | "firebase" | "" (ยังไม่ได้ตั้งค่า)
         // ผู้ใช้เดิมที่เคยเชื่อม Google Sheet ไว้ จะถูกตั้งเป็น "sheet" ให้อัตโนมัติ
         dataSource:
           localStorage.getItem("ff_data_source") ||
           (localStorage.getItem("ff_sheet_id") ? "sheet" : ""),
-        fbUrl: localStorage.getItem("ff_fb_url") || "",
-        fbAuth: localStorage.getItem("ff_fb_auth") || "",
+        fbUrl: "",
+        fbAuth: "",
         settingsTab: null, // แท็บที่กำลังเปิดดูในหน้าตั้งค่า (ไม่เกี่ยวกับแหล่งที่ใช้งานจริง)
         theme: localStorage.getItem("ff_theme") || "dark",
         colorTheme: localStorage.getItem("ff_color_theme") || "orange",
@@ -1323,7 +1514,7 @@
       // ---------------- Init ----------------
       window.addEventListener("DOMContentLoaded", init);
 
-      function init() {
+      async function init() {
         document.body.setAttribute("data-theme", STATE.theme);
         document.getElementById("themeToggle").textContent =
           STATE.theme === "dark" ? "🌙" : "☀️";
@@ -1331,6 +1522,11 @@
           STATE.theme === "dark";
         document.body.setAttribute("data-color-theme", STATE.colorTheme);
         renderColorThemePicker();
+        try {
+          await loadSecrets();
+        } catch (e) {
+          console.warn("โหลดข้อมูลการเชื่อมต่อไม่สำเร็จ", e);
+        }
         updateSheetConnectionUI();
         document.getElementById("logDate").value = new Date()
           .toISOString()
@@ -1557,31 +1753,82 @@
         const rawLogs = await apiGet("getFuelLogs", { carId });
         const car = STATE.cars.find((c) => c.id === carId);
         STATE.logs = enrichLogs(rawLogs, car && car.tankSize);
+        saveSnapshot();
       }
 
-      // ฟังก์ชันโหลดราคาน้ำมันแบบแคชรายวัน
-      async function getOilPricesFast() {
-        const today = new Date().toDateString(); // ดึงวันที่ปัจจุบัน
-        const cachedDate = localStorage.getItem("ff_oil_cache_date");
-        const cachedData = localStorage.getItem("ff_oil_cache_data");
-
-        // ถ้าวันที่ตรงกับวันนี้ และมีข้อมูลแคชอยู่ ให้ดึงมาใช้ทันที
-        if (cachedDate === today && cachedData) {
-          try {
-            return JSON.parse(cachedData);
-          } catch (e) {
-            console.error("อ่านแคชราคาน้ำมันไม่สำเร็จ", e);
-          }
+      // ---------------- ราคาน้ำมัน: แคชรายวัน + ไม่บล็อกการเปิดแอป ----------------
+      // เดิม: เปิดแอปครั้งแรกของวัน (หรือหลังล้างข้อมูลเบราว์เซอร์) ต้องรอ Apps Script
+      // ตอบกลับ (cold start + ดึงจากบางจาก อาจหลายวินาที) แล้วหน้าแรกถึงจะขึ้น
+      // ตอนนี้: ใช้แคชเก่า (แม้ของเมื่อวาน) วาดหน้าไปก่อนทันที แล้วโหลดราคาใหม่ใน
+      // พื้นหลัง เสร็จแล้วค่อยอัปเดตเฉพาะส่วนราคา
+      function readOilCache() {
+        try {
+          return JSON.parse(localStorage.getItem("ff_oil_cache_data") || "null");
+        } catch (e) {
+          return null;
         }
+      }
+      function isOilCacheFresh() {
+        return (
+          localStorage.getItem("ff_oil_cache_date") === new Date().toDateString() &&
+          !!readOilCache()
+        );
+      }
+      // คืนราคาใหม่ หรือ null ถ้าแคชยังสดอยู่/ดึงไม่สำเร็จ (ไม่ throw เพื่อไม่ให้กระทบหน้าหลัก)
+      async function fetchOilPricesIfStale() {
+        if (isOilCacheFresh()) return null;
+        try {
+          const fresh = await apiGet("getOilPrices");
+          localStorage.setItem("ff_oil_cache_date", new Date().toDateString());
+          localStorage.setItem("ff_oil_cache_data", JSON.stringify(fresh));
+          return fresh;
+        } catch (e) {
+          console.warn("โหลดราคาน้ำมันไม่สำเร็จ", e);
+          return null;
+        }
+      }
 
-        // ถ้าเปลี่ยนวันใหม่ หรือยังไม่มีแคช ให้โหลดผ่าน API ใหม่
-        const oilData = await apiGet("getOilPrices");
-
-        // บันทึกวันที่และข้อมูลล่าสุดลงแคช
-        localStorage.setItem("ff_oil_cache_date", today);
-        localStorage.setItem("ff_oil_cache_data", JSON.stringify(oilData));
-
-        return oilData;
+      // ---------------- Snapshot: เปิดแอปแล้วเห็นข้อมูลล่าสุดทันที ----------------
+      // เก็บรถ + ประวัติของรถที่เปิดอยู่ไว้ในเครื่อง ครั้งหน้าที่เปิดจะวาดจากตรงนี้ก่อน
+      // แล้วค่อยโหลดข้อมูลจริงมาแทนในพื้นหลัง (ถ้าออฟไลน์ก็ยังเห็นข้อมูลล่าสุด)
+      const SNAPSHOT_KEY = "ff_snapshot_v2";
+      function snapshotSourceId() {
+        // แท็กสุ่มของการเชื่อมต่อปัจจุบัน (ไม่ใช่ Sheet ID/URL จริง)
+        return localStorage.getItem(
+          STATE.dataSource === "firebase" ? "ff_tag_fb" : "ff_tag_sheet",
+        );
+      }
+      function saveSnapshot() {
+        if (!STATE.cars.length || !STATE.activeCarId) return;
+        if (!snapshotSourceId()) return;
+        try {
+          localStorage.setItem(
+            SNAPSHOT_KEY,
+            JSON.stringify({
+              src: STATE.dataSource,
+              id: snapshotSourceId(),
+              activeId: STATE.activeCarId,
+              cars: STATE.cars,
+              logs: STATE.logs,
+            }),
+          );
+        } catch (e) {
+          // พื้นที่เต็ม: ข้ามไป ไม่กระทบการใช้งาน
+        }
+      }
+      function readSnapshot() {
+        try {
+          const snap = JSON.parse(localStorage.getItem(SNAPSHOT_KEY) || "null");
+          if (!snap || !Array.isArray(snap.cars) || !Array.isArray(snap.logs)) return null;
+          const tag = snapshotSourceId();
+          if (!tag || snap.src !== STATE.dataSource || snap.id !== tag) return null;
+          // รถที่เลือกไว้ล่าสุดต้องตรงกับรถในสแนปช็อต ไม่งั้นจะเห็นประวัติของอีกคันชั่วครู่
+          if (STATE.activeCarId && String(STATE.activeCarId) !== String(snap.activeId)) return null;
+          if (!snap.cars.some((c) => String(c.id) === String(snap.activeId))) return null;
+          return snap;
+        } catch (e) {
+          return null;
+        }
       }
 
       // ---------------- Home skeleton toggle ----------------
@@ -1646,52 +1893,93 @@
         if (el) el.textContent = text;
       }
 
-      // วางต่อท้ายฟังก์ชัน enrichLogs(...)
-      async function bootstrap(showToast) {
-        showHomeSkeleton();
-        try {
-          setTopSubtitle("กำลังโหลดข้อมูลด่วน...");
+      // วาดทุกส่วนของแอปจาก STATE ปัจจุบัน (ใช้ทั้งตอนวาดจากสแนปช็อตและจากข้อมูลจริง)
+      function paintAll() {
+        populateMainMonthDropdown();
 
-          // โหลดรถ + ประวัติของรถที่เปิดอยู่ จากแหล่งข้อมูลที่เลือก (Sheet หรือ Firebase)
-          // ส่วนราคาน้ำมันดึงจาก Backend เช่นเดิม
-          const [loaded, oilData] = await Promise.all([
-            loadCarsAndLogs(),
-            getOilPricesFast(),
-          ]);
+        // เผยการ์ด #homeContent (เอา skeleton ออก) "ก่อน" เรียก renderHome()
+        // ที่จะไปสร้างกราฟแนวโน้มข้างใน (renderHomeChart -> new Chart(...))
+        // เดิมสลับลำดับกัน ทำให้ตอนโหลดหน้า/รีเฟรชครั้งแรก กราฟถูกสร้างขณะที่
+        // #homeContent ยัง display:none อยู่ (จาก showHomeSkeleton())
+        // Chart.js เลยวัดขนาด canvas ไม่ได้และข้าม animation "โตขึ้นจากล่าง"
+        // ไปเลย ต่างจากตอนเปลี่ยนเดือนที่การ์ดโชว์อยู่แล้วเลยเห็น animation ปกติ
+        // สลับลำดับให้ hideHomeSkeleton() มาก่อน ก็จะเห็น animation เหมือนกันทุกครั้ง
+        // (ปลอดภัย เพราะทุกบรรทัดด้านล่างเป็น sync ล้วน ไม่มี await คั่น)
+        hideHomeSkeleton();
+
+        renderCarChip();
+        renderCarsList();
+        renderOilPrices();
+        renderHome();
+        populateLogCarSelect();
+      }
+
+      async function bootstrap(showToast) {
+        // 1) ถ้ามีสแนปช็อตจากครั้งก่อน วาดหน้าจากมันทันที (ไม่ต้องรอเครือข่าย)
+        //    ตอนรีเฟรชที่มีข้อมูลบนจออยู่แล้ว (STATE.cars ไม่ว่าง) ใช้เส้นทางเดิม
+        const snap = STATE.cars.length ? null : readSnapshot();
+        if (!STATE.oilPrices) STATE.oilPrices = readOilCache(); // แคชเก่าก็ใช้ไปก่อน
+        if (snap) {
+          STATE.cars = snap.cars;
+          STATE.activeCarId = snap.activeId;
+          STATE.logs = snap.logs;
+          paintAll();
+          setTopSubtitle("กำลังอัปเดตข้อมูล...");
+        } else {
+          showHomeSkeleton();
+          setTopSubtitle("กำลังโหลดข้อมูลด่วน...");
+          if (!STATE.oilPrices) {
+            const lbl = document.getElementById("oilDateLabel");
+            if (lbl) lbl.textContent = "กำลังโหลด...";
+          }
+        }
+
+        // 2) ราคาน้ำมันโหลดในพื้นหลัง เริ่มทันทีแต่ "ไม่รอ" (ไม่บล็อกหน้าแรก)
+        const oilPromise = fetchOilPricesIfStale();
+
+        try {
+          // 3) โหลดรถ + ประวัติของรถที่เปิดอยู่ จากแหล่งข้อมูลที่เลือก (Sheet หรือ Firebase)
+          const loaded = await loadCarsAndLogs();
+
+          // ถ้าวาดจากสแนปช็อตไปแล้ว: เทียบกับข้อมูลจริงที่เพิ่งโหลดมา
+          const painted = snap
+            ? JSON.stringify([STATE.activeCarId, STATE.cars, STATE.logs])
+            : null;
 
           STATE.cars = loaded.cars;
-          STATE.oilPrices = oilData;
           STATE.activeCarId = loaded.activeId;
           if (loaded.activeId)
             localStorage.setItem("ff_active_car", loaded.activeId);
           const activeCar = STATE.cars.find((c) => c.id === STATE.activeCarId);
           STATE.logs = enrichLogs(loaded.logs, activeCar && activeCar.tankSize);
 
-          populateMainMonthDropdown();
-
-          // เผยการ์ด #homeContent (เอา skeleton ออก) "ก่อน" เรียก renderHome()
-          // ที่จะไปสร้างกราฟแนวโน้มข้างใน (renderHomeChart -> new Chart(...))
-          // เดิมสลับลำดับกัน ทำให้ตอนโหลดหน้า/รีเฟรชครั้งแรก กราฟถูกสร้างขณะที่
-          // #homeContent ยัง display:none อยู่ (จาก showHomeSkeleton() ด้านบน)
-          // Chart.js เลยวัดขนาด canvas ไม่ได้และข้าม animation "โตขึ้นจากล่าง"
-          // ไปเลย ต่างจากตอนเปลี่ยนเดือนที่การ์ดโชว์อยู่แล้วเลยเห็น animation ปกติ
-          // สลับลำดับให้ hideHomeSkeleton() มาก่อน ก็จะเห็น animation เหมือนกันทุกครั้ง
-          // (ย้ายแบบนี้ปลอดภัย เพราะทุกบรรทัดด้านล่างเป็น sync ล้วน ไม่มี await คั่น
-          // เบราว์เซอร์จึงไม่มีจังหวะ repaint ระหว่างทางให้เห็นเนื้อหาเก่า/ว่างเปล่า)
-          hideHomeSkeleton();
-
-          renderCarChip();
-          renderCarsList();
-          renderOilPrices();
-          renderHome();
-          populateLogCarSelect();
+          const unchanged =
+            painted !== null &&
+            painted === JSON.stringify([STATE.activeCarId, STATE.cars, STATE.logs]);
+          if (!unchanged) {
+            // ข้อมูลเปลี่ยนจริงถึงวาดซ้ำ และวาดแบบไม่เล่น animation (เล่นไปแล้วตอนวาดจากสแนปช็อต)
+            STATE.quietRepaint = !!snap;
+            try {
+              paintAll();
+            } finally {
+              STATE.quietRepaint = false;
+            }
+          }
+          saveSnapshot();
 
           if (showToast) toast("โหลดข้อมูลล่าสุดเรียบร้อย");
           setTopSubtitle("บันทึกการเติมน้ำมัน");
           setStatusHint("✅ เชื่อมต่อสำเร็จ");
+
+          // 4) ราคาน้ำมันใหม่มาถึงเมื่อไหร่ ค่อยอัปเดตเฉพาะส่วนที่ใช้ราคา
+          oilPromise.then((fresh) => {
+            if (!fresh) return;
+            STATE.oilPrices = fresh;
+            renderOilPrices(); // อัปเดตเฉพาะส่วนราคา ไม่วาดหน้าหลัก/กราฟใหม่
+          });
         } catch (err) {
           const msg = friendlyErrorMessage(err);
-          setTopSubtitle("เชื่อมต่อไม่สำเร็จ");
+          setTopSubtitle(snap ? "ออฟไลน์ (แสดงข้อมูลล่าสุดที่บันทึกไว้)" : "เชื่อมต่อไม่สำเร็จ");
           toast("Error: " + msg);
           setStatusHint("⚠️ " + msg);
           hideHomeSkeleton();
@@ -2070,9 +2358,8 @@
 
           STATE.fbUrl = url;
           STATE.fbAuth = auth;
-          localStorage.setItem("ff_fb_url", url);
-          if (auth) localStorage.setItem("ff_fb_auth", auth);
-          else localStorage.removeItem("ff_fb_auth");
+          await persistSecret("fb_url", url);
+          await persistSecret("fb_auth", auth); // ค่าว่าง = ลบ
 
           STATE.dataSource = "firebase";
           localStorage.setItem("ff_data_source", "firebase");
@@ -2103,8 +2390,8 @@
         const wasActive = STATE.dataSource === "firebase";
         STATE.fbUrl = "";
         STATE.fbAuth = "";
-        localStorage.removeItem("ff_fb_url");
-        localStorage.removeItem("ff_fb_auth");
+        removeSecret("fb_url");
+        removeSecret("fb_auth");
         if (wasActive) {
           STATE.cars = [];
           STATE.logs = [];
@@ -2376,11 +2663,11 @@
         closeOverlay("changeSheetModalOverlay");
       }
 
-      // ผู้ใช้กดยืนยันใน modal แล้ว -> ล้าง ff_sheet_id ทิ้งจริง แล้วเปิดช่องกรอก
+      // ผู้ใช้กดยืนยันใน modal แล้ว -> ล้าง Sheet ID ที่เก็บไว้ทิ้งจริง แล้วเปิดช่องกรอก
       // ให้กลับไปอยู่ในสถานะ "ยังไม่เชื่อมต่อ" พร้อมให้วางลิงก์ใหม่/เริ่มเก็บใหม่
       function confirmChangeSheet() {
         STATE.sheetId = "";
-        localStorage.removeItem("ff_sheet_id");
+        removeSecret("sheet_id");
         localStorage.removeItem("ff_active_car");
         STATE.activeCarId = null;
         STATE.cars = [];
@@ -2433,7 +2720,7 @@
           // เปลี่ยน Sheet ID ใหม่ ต้องล้างข้อมูล/สถานะของชีตเก่าทิ้ง กันข้อมูลปนกัน
           const isNewSheet = STATE.sheetId !== id;
           STATE.sheetId = id;
-          localStorage.setItem("ff_sheet_id", id);
+          await persistSecret("sheet_id", id);
           STATE.dataSource = "sheet";
           localStorage.setItem("ff_data_source", "sheet");
           if (isNewSheet) {
@@ -4207,6 +4494,8 @@
             ],
           },
           options: {
+            // วาดซ้ำเงียบ ๆ ตอนข้อมูลจริงมาแทนสแนปช็อต: ปิด animation กันกราฟเด้งซ้ำสองรอบ
+            animation: STATE.quietRepaint ? false : undefined,
             plugins: {
               legend: { display: false },
               tooltip: {
