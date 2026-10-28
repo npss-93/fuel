@@ -25,6 +25,10 @@
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
     />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
   </head>
   <body data-theme="dark" data-color-theme="orange">
@@ -39,7 +43,7 @@
           </div>
         </div>
         <div class="top-actions">
-          <div class="car-chip" id="carChip" onclick="openView('cars')">
+          <div class="car-chip" id="carChip" onclick="openCarSwitcher()">
             <div
               class="dot"
               id="carChipDot"
@@ -550,13 +554,9 @@
         </section>
 
         <!-- ============ CARS VIEW ============ -->
-        <section class="view" data-view="cars" id="view-cars">
-          <div class="section-title" style="margin-top: 6px">รถของฉัน</div>
-          <div id="carsList"></div>
-          <div class="add-car-card" onclick="openCarModal()">
-            <div style="font-size: 22px">＋</div>
-            <div>เพิ่มรถคันใหม่</div>
-          </div>
+        <section class="view" data-view="trip" id="view-trip">
+          <div id="tripListPanel"></div>
+          <div id="tripDetailPanel" style="display: none"></div>
         </section>
 
         <!-- ============ STATS VIEW ============ -->
@@ -680,6 +680,15 @@
               เลือกโทนสีหลักของแอป
             </div>
             <div class="theme-swatch-grid" id="colorThemePicker"></div>
+          </div>
+
+          <div class="section-title">รถของฉัน</div>
+          <div class="card">
+            <div id="settingsCarsList"></div>
+            <div class="add-car-card" onclick="openCarModal()">
+              <div style="font-size: 22px">＋</div>
+              <div>เพิ่มรถคันใหม่</div>
+            </div>
           </div>
 
           <div class="section-title">แหล่งเก็บข้อมูล</div>
@@ -827,8 +836,8 @@
           >
             <span class="ic"><i class="fas fa-home ic-home"></i></span>หน้าหลัก
           </button>
-          <button class="nav-btn" data-nav="cars" onclick="openView('cars')">
-            <span class="ic"><i class="fas fa-car ic-car"></i></span>รถของฉัน
+          <button class="nav-btn" data-nav="trip" onclick="openView('trip')">
+            <span class="ic"><i class="fas fa-route ic-car"></i></span>ทริป
           </button>
           <div
             class="nav-fab"
@@ -849,6 +858,185 @@
             <span class="ic"><i class="fas fa-cog ic-settings"></i></span>ตั้งค่า
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ============ CAR SWITCHER ============ -->
+    <div class="overlay" id="carSwitchOverlay" onclick="if(event.target===this)closeOverlay('carSwitchOverlay')">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span>เลือกรถ</span
+          ><button class="icon-btn" onclick="closeOverlay('carSwitchOverlay')">✕</button>
+        </div>
+        <div id="carsList"></div>
+        <div class="add-car-card" onclick="openCarModal()">
+          <div style="font-size: 22px">＋</div>
+          <div>เพิ่มรถคันใหม่</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ TRIP MODAL ============ -->
+    <div class="overlay" id="tripModalOverlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span id="tripModalTitle">เริ่ม Trip ใหม่</span
+          ><button class="icon-btn" onclick="closeOverlay('tripModalOverlay')">✕</button>
+        </div>
+        <div class="field">
+          <label>ชื่อ Trip</label>
+          <input class="input" type="text" id="tripNameInput" placeholder="เช่น กรุงเทพ → เชียงใหม่" />
+        </div>
+        <div class="field" id="tripCarField" style="display: none">
+          <label>รถของ Trip นี้</label>
+          <select class="input" id="tripCarSelect"></select>
+          <div class="hint">ถ้าเลือกผิดคัน เปลี่ยนได้ที่นี่ ประวัติเติมน้ำมันที่บันทึกจาก Trip นี้จะย้ายตามไปด้วย</div>
+        </div>
+        <button class="btn btn-primary btn-morph" id="saveTripBtn" onclick="saveTrip()"><span class="btn-spinner"></span><span class="btn-check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg></span><span class="btn-x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="btn-label-text">บันทึก</span></button>
+      </div>
+    </div>
+
+    <!-- ============ TRIP POINT MODAL ============ -->
+    <div class="overlay" id="pointModalOverlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span id="pointModalTitle">เพิ่มจุด</span
+          ><button class="icon-btn" onclick="closeOverlay('pointModalOverlay')">✕</button>
+        </div>
+        <div class="field">
+          <label>ชื่อจุด</label>
+          <input class="input" type="text" id="ptName" oninput="ptNameAuto=false" placeholder="เช่น ปั๊ม PTT นครสวรรค์" />
+        </div>
+        <div class="field link-field" id="ptLinkWrap">
+          <label>วางลิงก์ Google Maps (ดึงพิกัดและชื่อสถานที่ให้อัตโนมัติ)</label>
+          <div class="link-input">
+            <input class="input" type="text" id="ptLink" placeholder="https://maps.app.goo.gl/..." onchange="resolvePointLink()" onpaste="setTimeout(resolvePointLink, 50)" />
+            <span class="mini-spin"></span>
+          </div>
+          <div class="hint" id="ptLinkHint"></div>
+        </div>
+        <div class="field">
+          <label>ตำแหน่ง (ละติจูด, ลองจิจูด)</label>
+          <div class="trip-row">
+            <input class="input" type="text" inputmode="decimal" id="ptLat" placeholder="ละติจูด" />
+            <input class="input" type="text" inputmode="decimal" id="ptLng" placeholder="ลองจิจูด" />
+          </div>
+          <div class="trip-row" style="margin-top: 8px">
+            <button class="btn btn-outline btn-sm" id="ptGpsBtn" onclick="usePointGps()">📍 ตำแหน่งปัจจุบัน</button>
+            <button class="btn btn-outline btn-sm" onclick="openPickMap()">🗺️ เลือกบนแผนที่</button>
+          </div>
+        </div>
+        <div class="field">
+          <div class="dt-head">
+            <label id="ptArriveLabel">เวลาถึง</label>
+            <span class="dt-actions" id="ptArriveBoxAct"></span>
+          </div>
+          <div class="dt-field" id="ptArriveBox"></div>
+        </div>
+        <div class="field">
+          <div class="dt-head">
+            <label>เวลาออก (ถ้ามี)</label>
+            <span class="dt-actions" id="ptDepartBoxAct"></span>
+          </div>
+          <div class="dt-field" id="ptDepartBox"></div>
+        </div>
+        <div class="field">
+          <label>เลขไมล์ (กม.)</label>
+          <input class="input" type="number" inputmode="decimal" id="ptOdo" placeholder="ถ้ากรอก จะใช้คำนวณระยะทางจากจุดก่อนหน้า" />
+        </div>
+        <div class="toggle-row" style="margin-bottom: 10px">
+          <div>
+            <div class="tl">เติมน้ำมันที่จุดนี้</div>
+            <div class="ts">บันทึกลงประวัติเติมน้ำมันหลักด้วย (ต้องกรอกเลขไมล์)</div>
+          </div>
+          <label class="switch"
+            ><input type="checkbox" id="ptFuelOn" onchange="togglePointFuel()" /><span class="slider"></span
+          ></label>
+        </div>
+        <div id="ptFuelBox" style="display: none">
+          <div class="field">
+            <label>ชนิดน้ำมัน</label>
+            <select class="input" id="ptFuelType" onchange="onPtFuelType()"></select>
+          </div>
+          <div class="field">
+            <label>ราคาต่อลิตร (บาท)</label>
+            <input class="input" type="number" inputmode="decimal" id="ptPrice" oninput="ptCalc('price')" />
+          </div>
+          <div class="trip-row">
+            <div class="field">
+              <label>จำนวนเงิน (บาท)</label>
+              <input class="input" type="number" inputmode="decimal" id="ptCost" oninput="ptCalc('cost')" />
+            </div>
+            <div class="field">
+              <label>จำนวนลิตร</label>
+              <input class="input" type="number" inputmode="decimal" id="ptLiters" oninput="ptCalc('liters')" />
+            </div>
+          </div>
+          <div class="hint" id="ptPpl" style="margin: -2px 0 10px">กรอกอย่างใดอย่างหนึ่ง (บาท หรือ ลิตร) อีกค่าคำนวณจากราคาต่อลิตรให้</div>
+          <div class="toggle-row" style="margin-bottom: 10px">
+            <div><div class="tl">เติมเต็มถัง</div></div>
+            <label class="switch"
+              ><input type="checkbox" id="ptFull" /><span class="slider"></span
+            ></label>
+          </div>
+        </div>
+        <div class="field">
+          <label>หมายเหตุ</label>
+          <input class="input" type="text" id="ptNote" />
+        </div>
+        <button class="btn btn-primary btn-morph" id="savePointBtn" onclick="savePoint()"><span class="btn-spinner"></span><span class="btn-check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg></span><span class="btn-x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="btn-label-text">บันทึกจุด</span></button>
+      </div>
+    </div>
+
+    <!-- ============ PICK ON MAP ============ -->
+    <div class="overlay" id="pickMapOverlay">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span>แตะบนแผนที่เพื่อเลือกตำแหน่ง</span
+          ><button class="icon-btn" onclick="closeOverlay('pickMapOverlay')">✕</button>
+        </div>
+        <div class="pick-wrap">
+          <div id="pickMap" class="trip-map"></div>
+          <button class="pick-locate" id="pickLocateBtn" onclick="locateOnPickMap(true)" title="ตำแหน่งปัจจุบันของฉัน">📍</button>
+        </div>
+        <div class="hint" id="pickMapHint">ยังไม่ได้เลือกตำแหน่ง</div>
+        <button class="btn btn-primary" onclick="confirmPickMap()">ใช้ตำแหน่งนี้</button>
+      </div>
+    </div>
+
+    <!-- ============ TIME PICKER (spinner 24 ชม.) ============ -->
+    <div class="overlay" id="timePickerOverlay" onclick="if(event.target===this)closeOverlay('timePickerOverlay')">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title">
+          <span id="tpTitle">เลือกเวลา</span
+          ><button class="dt-chip" onclick="tpNow()">ตอนนี้</button>
+        </div>
+        <div class="tp-wrap">
+          <div class="tp-band"></div>
+          <div class="tp-col" id="tpHours"></div>
+          <div class="tp-colon">:</div>
+          <div class="tp-col" id="tpMins"></div>
+        </div>
+        <div class="tp-labels"><span>ชั่วโมง</span><span>นาที</span></div>
+        <div class="trip-row" style="margin-top: 12px">
+          <button class="btn btn-outline" onclick="closeOverlay('timePickerOverlay')">ยกเลิก</button>
+          <button class="btn btn-primary" onclick="tpOk()">ตกลง</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ ACTION SHEET (กดค้าง / ⋯) ============ -->
+    <div class="overlay" id="actionSheetOverlay" onclick="if(event.target===this)closeOverlay('actionSheetOverlay')">
+      <div class="sheet">
+        <div class="sheet-handle"></div>
+        <div class="sheet-title"><span id="actionSheetTitle"></span></div>
+        <button class="btn btn-outline" onclick="actionSheetDo('edit')"><i class="fas fa-pen"></i>&nbsp; แก้ไข</button>
+        <button class="btn btn-danger" style="margin-top: 10px" onclick="actionSheetDo('del')"><i class="fas fa-trash"></i>&nbsp; ลบ</button>
       </div>
     </div>
 
@@ -1349,7 +1537,7 @@
         if (action === "getFuelLogs" && STATE.dataSource === "firebase")
           return fbGetLogs(params && params.carId);
         // ราคาน้ำมันไม่ขึ้นกับแหล่งเก็บข้อมูล จึงไม่ต้องมี Sheet ID
-        if (action !== "getOilPrices" && !STATE.sheetId)
+        if (action !== "getOilPrices" && action !== "resolveMapLink" && !STATE.sheetId)
           throw new Error("ไม่พบ Sheet ID กรุณาตั้งค่าในหน้าตั้งค่าก่อน");
         const url = new URL(API_URL);
         url.searchParams.set("action", action);
@@ -1402,6 +1590,8 @@
       // จึงใช้ร่วมกับ fetchWithRetry ได้โดยไม่เกิดข้อมูลซ้ำ
       const FB_ROOT = "fullfuel";
       const FB_CAR_FIELDS = ["name", "brand", "model", "year", "fuelType", "tankSize", "color", "icon"];
+      const FB_TRIP_FIELDS = ["carId", "name", "status", "startedAt", "endedAt"];
+      const FB_POINT_FIELDS = ["tripId", "carId", "name", "lat", "lng", "arriveAt", "departAt", "odometer", "fuelType", "fuelCost", "fuelLiters", "isFullTank", "fuelLogId", "note"];
       const FB_LOG_FIELDS = ["carId", "date", "odometer", "fuelType", "fuelIcon", "pricePerLiter", "liters", "totalCost", "isFullTank", "note"];
 
       function normalizeFirebaseUrl(raw) {
@@ -1486,11 +1676,18 @@
             await fbRequest("PATCH", `cars/${fbSeg(p.id)}`, fbPick(p, FB_CAR_FIELDS));
             return { id: p.id };
           case "deleteCar":
-            // ลบรถ + ประวัติทั้งหมดของรถคันนั้นใน request เดียว
-            await fbRequest("PATCH", "", {
-              [`cars/${p.id}`]: null,
-              [`logs/${p.id}`]: null,
-            });
+            // ลบรถ + ประวัติ + Trip/จุดทั้งหมดของรถคันนั้นใน request เดียว
+            {
+              const tr = (await fbRequest("GET", "trips")) || {};
+              const del = { [`cars/${p.id}`]: null, [`logs/${p.id}`]: null };
+              Object.values(tr).forEach((t) => {
+                if (String(t.carId) === String(p.id)) {
+                  del[`trips/${t.id}`] = null;
+                  del[`tripPoints/${t.id}`] = null;
+                }
+              });
+              await fbRequest("PATCH", "", del);
+            }
             return { id: p.id };
           case "addFuelLog": {
             const id = newId();
@@ -1523,6 +1720,31 @@
             const old = STATE.logs.find((l) => String(l.id) === String(p.id));
             const carId = (old && old.carId) || STATE.activeCarId;
             await fbRequest("DELETE", `logs/${fbSeg(carId)}/${fbSeg(p.id)}`);
+            return { id: p.id };
+          }
+          case "addTrip":
+          case "addTripPoint": {
+            const id = newId();
+            const isPt = action === "addTripPoint";
+            const path = isPt ? `tripPoints/${fbSeg(p.tripId)}/${fbSeg(id)}` : `trips/${fbSeg(id)}`;
+            await fbRequest("PUT", path, { ...fbPick(p, isPt ? FB_POINT_FIELDS : FB_TRIP_FIELDS), id, createdAt: now });
+            return { id };
+          }
+          case "updateTrip":
+            await fbRequest("PATCH", `trips/${fbSeg(p.id)}`, fbPick(p, FB_TRIP_FIELDS));
+            return { id: p.id };
+          case "updateTripPoint": {
+            const old = STATE.tripPoints.find((x) => String(x.id) === String(p.id));
+            const tid = p.tripId || (old && old.tripId);
+            await fbRequest("PATCH", `tripPoints/${fbSeg(tid)}/${fbSeg(p.id)}`, fbPick(p, FB_POINT_FIELDS));
+            return { id: p.id };
+          }
+          case "deleteTrip":
+            await fbRequest("PATCH", "", { [`trips/${p.id}`]: null, [`tripPoints/${p.id}`]: null });
+            return { id: p.id };
+          case "deleteTripPoint": {
+            const old = STATE.tripPoints.find((x) => String(x.id) === String(p.id));
+            await fbRequest("DELETE", `tripPoints/${fbSeg((old && old.tripId) || p.tripId)}/${fbSeg(p.id)}`);
             return { id: p.id };
           }
           default:
@@ -2131,6 +2353,7 @@
           if (name !== "log") STATE.editingLogId = null;
           if (name === "log") prepareLogForm();
           if (name === "stats") renderStats();
+          if (name === "trip") renderTripView();
           setLogSheetOpen(name === "log");
           window.scrollTo(0, 0);
           logView.scrollTop = 0;
@@ -2535,17 +2758,23 @@
       };
       // สรุปจำนวนเป็นข้อความ จากรายการ key แบบ "cars/..." และ "logs/..."
       function fmtKeyCounts(keys) {
-        let c = 0, l = 0;
-        keys.forEach((k) => (k.startsWith("cars/") ? c++ : l++));
-        return `รถ ${c} คัน, ประวัติ ${l} รายการ`;
+        let c = 0, l = 0, t = 0, p = 0;
+        keys.forEach((k) => (k.startsWith("cars/") ? c++ : k.startsWith("tripPoints/") ? p++ : k.startsWith("trips/") ? t++ : l++));
+        return `รถ ${c} คัน, ประวัติ ${l} รายการ, Trip ${t} (จุด ${p})`;
       }
       // key ทั้งหมดที่มีอยู่บน Firebase ตอนนี้ ในรูป cars/{id} และ logs/{carId}/{id}
       async function fbExistingKeys() {
-        const [carsObj, logsObj] = await Promise.all([
+        const [carsObj, logsObj, tripsObj, ptsObj] = await Promise.all([
           fbRequest("GET", "cars"),
           fbRequest("GET", "logs"),
+          fbRequest("GET", "trips"),
+          fbRequest("GET", "tripPoints"),
         ]);
         const keys = new Set();
+        Object.keys(tripsObj || {}).forEach((id) => keys.add(`trips/${id}`));
+        Object.entries(ptsObj || {}).forEach(([tid, byId]) =>
+          Object.keys(byId || {}).forEach((id) => keys.add(`tripPoints/${tid}/${id}`)),
+        );
         Object.keys(carsObj || {}).forEach((id) => keys.add(`cars/${id}`));
         Object.entries(logsObj || {}).forEach(([cid, byId]) =>
           Object.keys(byId || {}).forEach((id) => keys.add(`logs/${cid}/${id}`)),
@@ -2561,12 +2790,17 @@
         setCopyBusy(true);
         try {
           setCopyHint("⏳ กำลังอ่านข้อมูลจาก Google Sheet...");
-          const [cars, logs] = await Promise.all([
+          const [cars, logs, tripsRaw, ptsRaw] = await Promise.all([
             fetchCSV("Cars", STATE.sheetId),
             fetchCSV("FuelLogs", STATE.sheetId),
+            fetchCSV("Trips", STATE.sheetId).catch(() => []),
+            fetchCSV("TripPoints", STATE.sheetId).catch(() => []),
           ]);
-
+          // gviz คืนชีตแรกถ้าไม่มีชีตชื่อนั้น จึงกรองด้วยคอลัมน์เฉพาะของ Trips/TripPoints
+          const sTrips = tripsRaw.filter((r) => r.status !== undefined && r.id);
+          const sPts = ptsRaw.filter((r) => r.tripId !== undefined && r.id);
           const num = (v) => Number(v) || 0;
+          const numE = (v) => (v === "" || v == null ? "" : Number(v));
           const updates = {};
           let skipped = 0;
           cars.forEach((c) => {
@@ -2588,6 +2822,23 @@
               totalCost: num(l.totalCost),
               isFullTank: String(l.isFullTank).toUpperCase() === "TRUE",
               note: l.note || "", createdAt: l.createdAt || "",
+            };
+          });
+          sTrips.forEach((t) => {
+            if (!validFbKey(t.id)) { skipped++; return; }
+            updates[`trips/${t.id}`] = {
+              id: t.id, carId: t.carId || "", name: t.name || "", status: t.status || "active",
+              startedAt: numE(t.startedAt), endedAt: numE(t.endedAt), createdAt: t.createdAt || "",
+            };
+          });
+          sPts.forEach((p) => {
+            if (!validFbKey(p.id) || !validFbKey(p.tripId)) { skipped++; return; }
+            updates[`tripPoints/${p.tripId}/${p.id}`] = {
+              id: p.id, tripId: p.tripId, carId: p.carId || "", name: p.name || "",
+              lat: numE(p.lat), lng: numE(p.lng), arriveAt: numE(p.arriveAt), departAt: numE(p.departAt),
+              odometer: numE(p.odometer), fuelType: p.fuelType || "", fuelCost: numE(p.fuelCost), fuelLiters: numE(p.fuelLiters),
+              isFullTank: String(p.isFullTank).toUpperCase() === "TRUE", fuelLogId: p.fuelLogId || "",
+              note: p.note || "", createdAt: p.createdAt || "",
             };
           });
 
@@ -2649,11 +2900,18 @@
         setCopyBusy(true);
         try {
           setCopyHint("⏳ กำลังอ่านข้อมูลจาก Firebase...");
-          const [carsObj, logsObj] = await Promise.all([
+          const [carsObj, logsObj, tripsObj, ptsObj] = await Promise.all([
             fbRequest("GET", "cars"),
             fbRequest("GET", "logs"),
+            fbRequest("GET", "trips"),
+            fbRequest("GET", "tripPoints"),
           ]);
           const cars = Object.values(carsObj || {});
+          const trips = Object.values(tripsObj || {});
+          const pts = [];
+          Object.entries(ptsObj || {}).forEach(([tid, byId]) => {
+            Object.entries(byId || {}).forEach(([pid, p]) => pts.push({ ...p, id: p.id || pid, tripId: p.tripId || tid }));
+          });
           // logs เก็บแบบซ้อน {carId: {logId: log}} -> แปลงเป็นลิสต์เรียบ
           const logs = [];
           Object.entries(logsObj || {}).forEach(([carId, byId]) => {
@@ -2661,17 +2919,25 @@
               logs.push({ ...l, id: l.id || logId, carId: l.carId || carId });
             });
           });
-          if (!cars.length && !logs.length) {
+          if (!cars.length && !logs.length && !trips.length) {
             setCopyHint("ไม่พบข้อมูลใน Firebase จึงไม่ได้คัดลอกหรือลบอะไรที่ Google Sheet");
             toast("ไม่พบข้อมูลใน Firebase");
             return;
           }
 
           setCopyHint("⏳ กำลังเทียบกับข้อมูลใน Google Sheet...");
-          const [destCars, destLogs] = await Promise.all([
+          const [destCars, destLogs, destTripsRaw, destPtsRaw] = await Promise.all([
             fetchCSV("Cars", STATE.sheetId),
             fetchCSV("FuelLogs", STATE.sheetId),
+            fetchCSV("Trips", STATE.sheetId).catch(() => []),
+            fetchCSV("TripPoints", STATE.sheetId).catch(() => []),
           ]);
+          const dTrip = new Set(destTripsRaw.filter((r) => r.status !== undefined).map((r) => r.id).filter(Boolean));
+          const dPt = new Set(destPtsRaw.filter((r) => r.tripId !== undefined).map((r) => r.id).filter(Boolean));
+          const sTrip = new Set(trips.map((t) => t.id)), sPt = new Set(pts.map((p) => p.id));
+          const addT = trips.filter((t) => !dTrip.has(t.id)).length, addP = pts.filter((p) => !dPt.has(p.id)).length;
+          const delT = mirror ? [...dTrip].filter((id) => !sTrip.has(id)).length : 0;
+          const delP = mirror ? [...dPt].filter((id) => !sPt.has(id)).length : 0;
           const dCar = new Set(destCars.map((r) => r.id).filter(Boolean));
           const dLog = new Set(destLogs.map((r) => r.id).filter(Boolean));
           const sCar = new Set(cars.map((c) => c.id));
@@ -2684,36 +2950,35 @@
 
           const msg =
             "คัดลอกจาก Firebase ไปยัง Google Sheet\n\n" +
-            `• เพิ่มใหม่: รถ ${addC} คัน, ประวัติ ${addL} รายการ\n` +
-            `• เขียนทับ: รถ ${updC} คัน, ประวัติ ${updL} รายการ\n` +
-            (mirror ? `• ลบที่ Sheet (ไม่มีใน Firebase แล้ว): รถ ${delC} คัน, ประวัติ ${delL} รายการ\n` : "") +
+            `• เพิ่มใหม่: รถ ${addC} คัน, ประวัติ ${addL} รายการ, Trip ${addT} (จุด ${addP})\n` +
+            `• เขียนทับ: รถ ${updC} คัน, ประวัติ ${updL} รายการ, Trip ${trips.length - addT} (จุด ${pts.length - addP})\n` +
+            (mirror ? `• ลบที่ Sheet (ไม่มีใน Firebase แล้ว): รถ ${delC} คัน, ประวัติ ${delL} รายการ, Trip ${delT} (จุด ${delP})\n` : "") +
             "\nข้อมูลใน Firebase จะไม่ถูกแก้ไข ดำเนินการต่อหรือไม่?";
           if (!confirm(msg)) {
             setCopyHint("ยกเลิกการคัดลอกแล้ว");
             return;
           }
 
-          // ส่งเป็นก้อน: ก้อนแรกพ่วงข้อมูลรถทั้งหมดไปด้วย
-          const total = cars.length + logs.length;
+          // ส่งเป็นก้อน: ก้อนแรกพ่วงรถ+Trip ทั้งหมด ตามด้วยประวัติ และจุดของ Trip ทีละก้อน
+          const chunks = [{ cars, trips }];
+          for (let i = 0; i < logs.length; i += COPY_CHUNK_LOGS) chunks.push({ logs: logs.slice(i, i + COPY_CHUNK_LOGS) });
+          for (let i = 0; i < pts.length; i += COPY_CHUNK_LOGS) chunks.push({ tripPoints: pts.slice(i, i + COPY_CHUNK_LOGS) });
+          const total = cars.length + logs.length + trips.length + pts.length;
           let done = 0;
           const onRetry = (attempt, max) =>
             setCopyHint(`⏳ เครือข่ายไม่เสถียร กำลังลองใหม่ (${attempt}/${max})...`);
-          for (let i = 0; i === 0 || i < logs.length; i += COPY_CHUNK_LOGS) {
-            const part = {
-              cars: i === 0 ? cars : [],
-              logs: logs.slice(i, i + COPY_CHUNK_LOGS),
-            };
+          for (const part of chunks) {
             await apiPostRaw("importData", STATE.sheetId, part, onRetry);
-            done += part.cars.length + part.logs.length;
+            done += Object.values(part).reduce((n, arr) => n + arr.length, 0);
             setCopyHint(`⏳ กำลังเขียนไป Google Sheet ${done}/${total} รายการ...`);
           }
           // ลบส่วนเกินหลังเขียนครบทุกก้อนแล้วเท่านั้น (ถ้าพังก่อนถึงตรงนี้ ข้อมูลแค่เกิน ไม่หาย)
-          if (mirror && delC + delL > 0) {
+          if (mirror && delC + delL + delT + delP > 0) {
             setCopyHint("⏳ กำลังลบรายการที่ไม่มีใน Firebase แล้ว...");
             await apiPostRaw(
               "pruneData",
               STATE.sheetId,
-              { carIds: [...sCar], logIds: [...sLog] },
+              { carIds: [...sCar], logIds: [...sLog], tripIds: [...sTrip], pointIds: [...sPt] },
               onRetry,
             );
           }
@@ -2721,8 +2986,8 @@
           toast("คัดลอกไป Google Sheet สำเร็จ");
           if (STATE.dataSource === "sheet") await bootstrap(true);
           setCopyHint(
-            `✅ คัดลอกไป Google Sheet สำเร็จ: เพิ่ม ${addC + addL}, เขียนทับ ${updC + updL}` +
-              (mirror ? `, ลบ ${delC + delL}` : ""),
+            `✅ คัดลอกไป Google Sheet สำเร็จ: เพิ่ม ${addC + addL + addT + addP}, เขียนทับ ${updC + updL + (trips.length - addT) + (pts.length - addP)}` +
+              (mirror ? `, ลบ ${delC + delL + delT + delP}` : ""),
           );
         } catch (err) {
           let msg = friendlyErrorMessage(err);
@@ -2856,6 +3121,8 @@
 
       async function selectCar(carId) {
         STATE.activeCarId = carId;
+        STATE.tripsCarId = null;
+        STATE.openTripId = null;
         localStorage.setItem("ff_active_car", carId);
         showHomeSkeleton();
         renderCarChip();
@@ -2870,21 +3137,22 @@
         STATE.logPage = 1;
         const searchInput = document.getElementById("logSearchInput");
         if (searchInput) searchInput.value = "";
-        openView("home");
+        // อยู่หน้าเดิม (ไม่เด้งไปหน้าหลัก) แล้ววาดหน้านั้นใหม่ให้ตรงกับรถที่เลือก
+        const cur = document.querySelector(".view.active");
+        const curName = cur ? cur.dataset.view : "home";
+        if (curName === "trip") renderTripView();
+        else if (curName === "stats") renderStats();
       }
 
       // ---------------- Cars list / modal ----------------
       function renderCarsList() {
-        const wrap = document.getElementById("carsList");
-        if (!STATE.cars.length) {
-          wrap.innerHTML =
-            '<div class="empty-state"><div class="em-ic">🚗</div><div class="em-t">ยังไม่มีรถ</div><div class="em-s">เพิ่มรถคันแรกของคุณด้านล่าง</div></div>';
-          return;
-        }
-        wrap.innerHTML = STATE.cars
-          .map(
-            (c) => `
-    <div class="car-card ${c.id === STATE.activeCarId ? "selected" : ""}" onclick="selectCar('${c.id}')">
+        const mk = (pick) =>
+          !STATE.cars.length
+            ? '<div class="empty-state"><div class="em-ic">🚗</div><div class="em-t">ยังไม่มีรถ</div><div class="em-s">เพิ่มรถคันแรกของคุณด้านล่าง</div></div>'
+            : STATE.cars
+                .map(
+                  (c) => `
+    <div class="car-card ${c.id === STATE.activeCarId ? "selected" : ""}" onclick="${pick}('${c.id}')">
       <div class="car-avatar" style="background:${c.color || "#FF7A29"}33;">${c.icon || "🚗"}</div>
       <div class="car-info">
         <div class="cn">${escapeHtml(c.name)}</div>
@@ -2892,8 +3160,20 @@
       </div>
       <button class="car-edit" onclick="event.stopPropagation();openCarModal('${c.id}')">⋯</button>
     </div>`,
-          )
-          .join("");
+                )
+                .join("");
+        const a = document.getElementById("carsList");
+        const b = document.getElementById("settingsCarsList");
+        if (a) a.innerHTML = mk("pickCarFromSwitcher");
+        if (b) b.innerHTML = mk("selectCar");
+      }
+      function openCarSwitcher() {
+        renderCarsList();
+        document.getElementById("carSwitchOverlay").classList.add("open");
+      }
+      function pickCarFromSwitcher(id) {
+        closeOverlay("carSwitchOverlay");
+        selectCar(id);
       }
 
       let pickedIcon = CAR_ICONS[0],
@@ -3023,6 +3303,932 @@
         } catch (err) {
           toast("ลบไม่สำเร็จ: " + err.message);
         }
+      }
+
+      // ---------------- TRIP ----------------
+      // Trip = การเดินทางหนึ่งครั้งของรถหนึ่งคัน ประกอบด้วยจุดแวะหลายจุด (TripPoints)
+      // เวลาทั้งหมดเก็บเป็น epoch ms (ตัวเลข) กัน Google Sheet แปลงรูปแบบวันที่เอง
+      // ระยะทางระหว่างจุด: ใช้เลขไมล์ลบกันถ้ามีทั้งสองจุด ไม่งั้นใช้ระยะตามถนนจาก OSRM
+      // และถ้าออฟไลน์/ขอไม่ได้ จะใช้เส้นตรง (Haversine) เป็นค่าประมาณ
+      Object.assign(STATE, {
+        trips: [], tripPoints: [], tripsCarId: null, openTripId: null,
+        editingTripId: null, editingPointId: null,
+      });
+      let tripMap = null, pickMap = null, pickMarker = null, pickLL = null;
+      let ROUTE_CACHE = {};
+      try { ROUTE_CACHE = JSON.parse(localStorage.getItem("ff_route_cache") || "{}"); } catch (e) {}
+
+      const $id = (x) => document.getElementById(x);
+      const numOrNull = (v) => (v === "" || v == null || !isFinite(Number(v)) ? null : Number(v));
+      const tripMs = (v) => {
+        if (v === "" || v == null) return null;
+        const n = Number(v);
+        // เวลาเก็บเป็น "นาทีนับจาก epoch" (ตัวเลข 8 หลัก) กัน Google Sheet แปลงเลข 13 หลักเป็นรูปแบบ 1.76E+12 จนเวลาเพี้ยน
+        // ค่าที่ใหญ่กว่า 1e11 ถือเป็นมิลลิวินาทีแบบเดิม (ข้อมูลที่บันทึกไว้ก่อนหน้านี้)
+        if (isFinite(n)) return n < 1e11 ? n * 60000 : n;
+        const t = new Date(v).getTime();
+        return isNaN(t) ? null : t;
+      };
+      const isTrue = (v) => v === true || String(v).toUpperCase() === "TRUE";
+      const hasLL = (p) => numOrNull(p.lat) != null && numOrNull(p.lng) != null;
+      function fmtDur(ms) {
+        if (ms == null || ms < 0) return "--";
+        const m = Math.round(ms / 60000), h = Math.floor(m / 60);
+        return h ? `${h} ชม. ${m % 60} นาที` : `${m} นาที`;
+      }
+      function fmtDT(v) {
+        const t = tripMs(v);
+        return t == null ? "--" : new Date(t).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+      }
+      function msToInput(ms) {
+        if (ms == null) return "";
+        return new Date(ms - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      }
+      const toMin = (ms) => Math.floor(ms / 60000);
+      function haversineKm(a, b) {
+        const R = 6371, r = (x) => (Number(x) * Math.PI) / 180;
+        const dLat = r(b.lat) - r(a.lat), dLng = r(b.lng) - r(a.lng);
+        const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+        return 2 * R * Math.asin(Math.sqrt(h));
+      }
+
+
+      // ----- Swipe ซ้ายเพื่อแสดงปุ่มแก้ไข/ลบ + กดค้างเพื่อเปิดเมนู (ใช้ร่วมกันทั้ง รายการเติม / Trip / จุดใน Trip) -----
+      const SWIPE_W = 150;
+      let swipeOpen = null, swipeDrag = null, swipeSuppress = 0, lpTimer = null, ACTION_TARGET = null;
+      const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+      function swipeWrapHtml(kind, id, title, inner, cls) {
+        return `<div class="swipe-wrap ${cls || ""}" data-kind="${kind}" data-id="${escapeHtml(String(id))}" data-title="${escapeHtml(title || "")}">
+          <div class="swipe-actions">
+            <button type="button" class="swipe-btn edit" onclick="swipeAct(this,'edit')"><i class="fas fa-pen"></i><span>แก้ไข</span></button>
+            <button type="button" class="swipe-btn del" onclick="swipeAct(this,'del')"><i class="fas fa-trash"></i><span>ลบ</span></button>
+          </div>
+          <div class="swipe-body">${inner}</div>
+        </div>`;
+      }
+      function swipeDispatch(kind, id, act) {
+        const fns = { log: [editLog, deleteLog], point: [openPointModal, deletePoint], trip: [openTripModal, deleteTripConfirm] }[kind];
+        if (fns) fns[act === "edit" ? 0 : 1](id);
+      }
+      function swipeAct(btn, act) {
+        const w = btn.closest(".swipe-wrap");
+        closeSwipe(w);
+        swipeDispatch(w.dataset.kind, w.dataset.id, act);
+      }
+      function openSwipe(w) {
+        if (swipeOpen && swipeOpen !== w) closeSwipe(swipeOpen);
+        swipeOpen = w;
+        w.classList.add("is-open");
+        const b = w.querySelector(".swipe-body");
+        b.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+        b.style.transform = `translateX(${-SWIPE_W}px)`;
+      }
+      function closeSwipe(w) {
+        if (!w) return;
+        // ไม่ได้เปิด/ลากอยู่ (เช่นแค่แตะปุ่มในการ์ด) ไม่ต้องทำอะไร กันปุ่มแก้ไข/ลบแวบขึ้นมา
+        const wasOut = w.classList.contains("is-open") || w.classList.contains("dragging");
+        w.classList.remove("is-open", "dragging");
+        if (wasOut) {
+          // ระหว่างเลื่อนกลับ ให้คงพื้นหลังการ์ด/ปุ่มไว้จนจบแอนิเมชัน กันปุ่มแวบทะลุ
+          w.classList.add("settling");
+          clearTimeout(w._st);
+          w._st = setTimeout(() => w.classList.remove("settling"), 280);
+        }
+        const b = w.querySelector(".swipe-body");
+        b.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+        b.style.transform = "";
+        if (swipeOpen === w) swipeOpen = null;
+      }
+      function openActionSheetFor(kind, id, title) {
+        const ov = $id("actionSheetOverlay");
+        if (ov.classList.contains("open")) return;
+        ACTION_TARGET = { kind, id: String(id) };
+        $id("actionSheetTitle").textContent = title || "";
+        ov.classList.add("open");
+      }
+      function openActionSheet(w) { openActionSheetFor(w.dataset.kind, w.dataset.id, w.dataset.title); }
+      function actionSheetDo(act) {
+        const t = ACTION_TARGET;
+        closeOverlay("actionSheetOverlay");
+        if (t) setTimeout(() => swipeDispatch(t.kind, t.id, act), 240);
+      }
+      document.addEventListener("pointerdown", (e) => {
+        const body = e.target.closest && e.target.closest(".swipe-body");
+        if (swipeOpen && (!body || body.parentElement !== swipeOpen) && !e.target.closest(".swipe-btn")) closeSwipe(swipeOpen);
+        if (!body || (e.pointerType === "mouse" && e.button !== 0)) return;
+        const wrap = body.parentElement;
+        swipeDrag = { wrap, body, x0: e.clientX, y0: e.clientY, base: wrap.classList.contains("is-open") ? -SWIPE_W : 0, mode: null, cur: 0 };
+        clearTimeout(lpTimer);
+        if (!e.target.closest("button, a, input, select, textarea")) {
+          lpTimer = setTimeout(() => {
+            if (swipeDrag && !swipeDrag.mode) {
+              const w = swipeDrag.wrap;
+              swipeDrag = null;
+              swipeSuppress = Date.now() + 700;
+              if (navigator.vibrate) navigator.vibrate(18);
+              openActionSheet(w);
+            }
+          }, 480);
+        }
+      });
+      document.addEventListener("pointermove", (e) => {
+        const d = swipeDrag;
+        if (!d) return;
+        const dx = e.clientX - d.x0, dy = e.clientY - d.y0;
+        if (!d.mode) {
+          if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+          clearTimeout(lpTimer);
+          d.mode = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+          if (d.mode === "x") { d.wrap.classList.add("dragging"); if (swipeOpen && swipeOpen !== d.wrap) closeSwipe(swipeOpen); }
+        }
+        if (d.mode !== "x") return;
+        d.cur = Math.max(-SWIPE_W - 24, Math.min(0, d.base + dx));
+        d.body.style.transition = "none";
+        d.body.style.transform = `translateX(${d.cur}px)`;
+      });
+      const endSwipe = () => {
+        clearTimeout(lpTimer);
+        const d = swipeDrag;
+        swipeDrag = null;
+        if (!d || d.mode !== "x") return;
+        swipeSuppress = Date.now() + 350;
+        d.wrap.classList.remove("dragging");
+        if (d.cur < -SWIPE_W / 2) openSwipe(d.wrap); else closeSwipe(d.wrap);
+      };
+      document.addEventListener("pointerup", endSwipe);
+      document.addEventListener("pointercancel", endSwipe);
+      document.addEventListener("click", (e) => {
+        const b = e.target.closest && e.target.closest(".swipe-body");
+        if (!b) return;
+        if (Date.now() < swipeSuppress || b.parentElement.classList.contains("is-open")) {
+          e.stopPropagation(); e.preventDefault();
+          if (b.parentElement.classList.contains("is-open") && Date.now() >= swipeSuppress) closeSwipe(b.parentElement);
+        }
+      }, true);
+      document.addEventListener("contextmenu", (e) => {
+        const b = e.target.closest && e.target.closest(".swipe-body");
+        if (!b) return;
+        e.preventDefault();
+        swipeSuppress = Date.now() + 700;
+        openActionSheet(b.parentElement);
+      });
+
+      // ----- Animation ระหว่างรอ -----
+      const morphInner = (label) => `<span class="btn-spinner"></span><span class="btn-check"><svg viewBox="0 0 24 24"><path d="M5 13l4 4L19 7"></path></svg></span><span class="btn-x"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"></path></svg></span><span class="btn-label-text">${label}</span>`;
+      // ปุ่มหมุนเป็นวงกลม → ✓ (สำเร็จ) หรือ ✕ (ผิดพลาด แล้วโยน error ต่อให้ผู้เรียกแสดง toast)
+      async function morph(btn, fn) {
+        btn.disabled = true;
+        btn.classList.remove("is-success", "is-error");
+        btn.classList.add("is-loading");
+        try {
+          const r = await fn();
+          btn.classList.remove("is-loading");
+          btn.classList.add("is-success");
+          await sleep(650);
+          return r;
+        } catch (e) {
+          btn.classList.remove("is-loading");
+          btn.classList.add("is-error");
+          await sleep(1300);
+          btn.classList.remove("is-error");
+          throw e;
+        } finally { btn.disabled = false; }
+      }
+      // โชว์สถานะกำลังทำงานบนการ์ด (หรือทั้งหน้ารายละเอียดถ้าไม่เจอการ์ด)
+      function setBusy(kind, id, on) {
+        const w = [...document.querySelectorAll(".swipe-wrap")].find((x) => x.dataset.kind === kind && x.dataset.id === String(id));
+        const el = w || $id("tripDetailPanel");
+        if (!el) return;
+        el.classList.toggle(w ? "busy" : "panel-busy", on);
+        if (w) {
+          const old = w.querySelector(".swipe-busy");
+          if (old) old.remove();
+          if (on) { closeSwipe(w); w.insertAdjacentHTML("beforeend", '<div class="swipe-busy"><span class="mini-spin big"></span></div>'); }
+        }
+      }
+
+
+      // ----- ช่องวันที่ + เวลาแบบ 24 ชม. (วันที่ / ชม. / นาที) แทน datetime-local ที่เป็น AM/PM -----
+      const pad2 = (n) => String(n).padStart(2, "0");
+      function buildDt(boxId, optional) {
+        const box = $id(boxId), act = $id(boxId + "Act");
+        const opts = (n) => Array.from({ length: n }, (_, i) => `<option value="${pad2(i)}">${pad2(i)}</option>`).join("");
+        // กลุ่มเดียวแถวเดียว: [วันที่ | ชม. : นาที] ปุ่ม "ตอนนี้/ล้าง" อยู่แถวหัวข้อ ไม่แย่งที่ช่องกรอก
+        box.innerHTML = `
+          <input type="date" class="dt-date" aria-label="วันที่" onchange="dtTouch('${boxId}')" />
+          <span class="dt-div"></span>
+          <button type="button" class="dt-time dt-timebtn" onclick="openTimePicker('${boxId}')" aria-label="เลือกเวลา (24 ชม.)">
+            <span class="dt-h">00</span><span class="dt-sep">:</span><span class="dt-m">00</span>
+          </button>`;
+        act.innerHTML = `<button type="button" class="dt-chip" onclick="dtNow('${boxId}')">ตอนนี้</button>` +
+          (optional ? `<button type="button" class="dt-chip" onclick="setDt('${boxId}', null)">ล้าง</button>` : "");
+      }
+      function setDt(boxId, ms) {
+        const box = $id(boxId);
+        const d = box.querySelector(".dt-date"), h = box.querySelector(".dt-h"), m = box.querySelector(".dt-m");
+        if (ms == null) { d.value = ""; h.textContent = "00"; m.textContent = "00"; box.classList.add("empty"); return; }
+        const t = new Date(ms);
+        d.value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`;
+        h.textContent = pad2(t.getHours()); m.textContent = pad2(t.getMinutes());
+        box.classList.remove("empty");
+      }
+      function getDt(boxId) {
+        const box = $id(boxId);
+        const d = box.querySelector(".dt-date").value;
+        if (!d) return null;
+        const [y, mo, da] = d.split("-").map(Number);
+        return new Date(y, mo - 1, da, Number(box.querySelector(".dt-h").textContent), Number(box.querySelector(".dt-m").textContent)).getTime();
+      }
+      const dtNow = (boxId) => setDt(boxId, Date.now());
+      // ----- Time picker แบบล้อหมุน (spinner) 24 ชม.: เลื่อนเลือก ชม. และ นาที -----
+      const TP_ROW = 40;
+      let tpBox = null, tpReady = false;
+      function tpInit() {
+        if (tpReady) return;
+        tpReady = true;
+        [["tpHours", 24], ["tpMins", 60]].forEach(([id, n]) => {
+          const col = $id(id);
+          col.innerHTML = Array.from({ length: n }, (_, i) => `<div class="tp-item" data-i="${i}">${pad2(i)}</div>`).join("");
+          let raf = 0;
+          col.addEventListener("scroll", () => {
+            cancelAnimationFrame(raf);
+            raf = requestAnimationFrame(() => tpMark(col));
+          });
+          col.addEventListener("click", (e) => {
+            const it = e.target.closest(".tp-item");
+            if (it) col.scrollTo({ top: Number(it.dataset.i) * TP_ROW, behavior: "smooth" });
+          });
+        });
+      }
+      function tpMark(col) {
+        const i = Math.max(0, Math.min(col.children.length - 1, Math.round(col.scrollTop / TP_ROW)));
+        const cur = col.querySelector(".sel");
+        if (cur && Number(cur.dataset.i) === i) return;
+        if (cur) cur.classList.remove("sel");
+        col.children[i].classList.add("sel");
+      }
+      function tpSet(h, m, smooth) {
+        [["tpHours", h], ["tpMins", m]].forEach(([id, v]) => {
+          const col = $id(id);
+          col.scrollTo({ top: v * TP_ROW, behavior: smooth ? "smooth" : "auto" });
+          if (!smooth) tpMark(col);
+        });
+      }
+      function openTimePicker(boxId) {
+        tpInit();
+        tpBox = boxId;
+        const box = $id(boxId);
+        $id("tpTitle").textContent = boxId === "ptDepartBox" ? "เวลาออก" : $id("ptArriveLabel").textContent;
+        $id("timePickerOverlay").classList.add("open");
+        const h = Number(box.querySelector(".dt-h").textContent), m = Number(box.querySelector(".dt-m").textContent);
+        setTimeout(() => tpSet(h, m, false), 60);
+      }
+      function tpNow() { const t = new Date(); tpSet(t.getHours(), t.getMinutes(), true); }
+      function tpOk() {
+        const h = Math.round($id("tpHours").scrollTop / TP_ROW), m = Math.round($id("tpMins").scrollTop / TP_ROW);
+        const box = $id(tpBox);
+        box.querySelector(".dt-h").textContent = pad2(h);
+        box.querySelector(".dt-m").textContent = pad2(m);
+        dtTouch(tpBox);
+        closeOverlay("timePickerOverlay");
+      }
+      // เลือกชม./นาทีโดยยังไม่ได้เลือกวัน → ใช้วันนี้ให้เอง
+      function dtTouch(boxId) {
+        const box = $id(boxId), d = box.querySelector(".dt-date");
+        if (!d.value) { const t = new Date(); d.value = `${t.getFullYear()}-${pad2(t.getMonth() + 1)}-${pad2(t.getDate())}`; }
+        box.classList.remove("empty");
+      }
+
+      // ----- โหลดข้อมูล -----
+      async function loadTrips() {
+        const carId = STATE.activeCarId;
+        if (!carId) { STATE.trips = []; STATE.tripPoints = []; return; }
+        let trips, points = [];
+        if (STATE.dataSource === "firebase") {
+          const [t, p] = await Promise.all([fbRequest("GET", "trips"), fbRequest("GET", "tripPoints")]);
+          trips = Object.values(t || {});
+          Object.values(p || {}).forEach((g) => points.push(...Object.values(g || {})));
+        } else {
+          // gviz จะคืนชีตแรกถ้าไม่มีชีตชื่อนี้ จึงกรองด้วยคอลัมน์เฉพาะของแต่ละชีต
+          const [t, p] = await Promise.all([
+            fetchCSV("Trips").catch(() => []),
+            fetchCSV("TripPoints").catch(() => []),
+          ]);
+          trips = t.filter((r) => r.status !== undefined);
+          points = p.filter((r) => r.tripId !== undefined);
+        }
+        STATE.trips = trips
+          .filter((t) => String(t.carId) === String(carId))
+          .sort((a, b) => (tripMs(b.startedAt) || 0) - (tripMs(a.startedAt) || 0));
+        const ids = new Set(STATE.trips.map((t) => String(t.id)));
+        STATE.tripPoints = points.filter((p) => ids.has(String(p.tripId)));
+        STATE.tripsCarId = carId;
+      }
+
+      // ----- คำนวณ -----
+      const tripById = (id) => STATE.trips.find((t) => String(t.id) === String(id));
+      function tripPts(id) {
+        // เรียงตามเวลาถึง ถ้าเท่ากัน (เช่นเพิ่มจุดติดกันในนาทีเดียวกัน) ใช้ลำดับที่สร้างก่อน-หลังตัดสิน
+        return STATE.tripPoints
+          .map((p, i) => ({ p, i }))
+          .filter((o) => String(o.p.tripId) === String(id))
+          .sort((x, y) =>
+            (tripMs(x.p.arriveAt) || 0) - (tripMs(y.p.arriveAt) || 0) ||
+            (tripMs(x.p.createdAt) || 0) - (tripMs(y.p.createdAt) || 0) ||
+            x.i - y.i)
+          .map((o) => o.p);
+      }
+
+      const legKey = (a, b) => [a.lat, a.lng, b.lat, b.lng].map((v) => Number(v).toFixed(5)).join(",");
+      function tripLegs(pts) {
+        const legs = [];
+        for (let i = 1; i < pts.length; i++) {
+          const a = pts[i - 1], b = pts[i];
+          let km = null, src = "";
+          const oa = numOrNull(a.odometer), ob = numOrNull(b.odometer);
+          if (oa != null && ob != null && ob > oa) { km = ob - oa; src = "odo"; }
+          else if (hasLL(a) && hasLL(b)) {
+            const r = ROUTE_CACHE[legKey(a, b)];
+            if (r) { km = r.km; src = "road"; } else { km = haversineKm(a, b); src = "line"; }
+          }
+          const t0 = tripMs(a.departAt) ?? tripMs(a.arriveAt), t1 = tripMs(b.arriveAt);
+          legs.push({ a, b, km, src, ms: t0 != null && t1 != null && t1 >= t0 ? t1 - t0 : null });
+        }
+        return legs;
+      }
+      function tripStats(trip) {
+        const pts = tripPts(trip.id), legs = tripLegs(pts);
+        const km = legs.reduce((s, l) => s + (l.km || 0), 0);
+        const moveMs = legs.reduce((s, l) => s + (l.ms || 0), 0);
+        const stayMs = pts.reduce((s, p) => {
+          const a = tripMs(p.arriveAt), d = tripMs(p.departAt);
+          return s + (a != null && d != null && d > a ? d - a : 0);
+        }, 0);
+        const first = pts.length ? tripMs(pts[0].arriveAt) : null;
+        const lp = pts[pts.length - 1];
+        const end = lp ? tripMs(lp.departAt) ?? tripMs(lp.arriveAt) : null;
+        const cost = pts.reduce((s, p) => s + (numOrNull(p.fuelCost) || 0), 0);
+        const liters = pts.reduce((s, p) => s + (numOrNull(p.fuelLiters) || 0), 0);
+        return {
+          pts, legs, km, moveMs, stayMs, cost, liters,
+          totalMs: first != null && end != null ? end - first : null,
+          kml: liters > 0 && km > 0 ? km / liters : null,
+          perKm: km > 0 && cost > 0 ? cost / km : null,
+          avgSpeed: moveMs > 0 && km > 0 ? km / (moveMs / 3600000) : null,
+          fuelStops: pts.filter((p) => numOrNull(p.fuelLiters) > 0 || numOrNull(p.fuelCost) > 0).length,
+          hasEstimate: legs.some((l) => l.src === "line"),
+        };
+      }
+      async function fetchRoad(a, b) {
+        const k = legKey(a, b);
+        if (ROUTE_CACHE[k]) return ROUTE_CACHE[k];
+        try {
+          const res = await fetchWithRetry(
+            `https://router.project-osrm.org/route/v1/driving/${a.lng},${a.lat};${b.lng},${b.lat}?overview=full&geometries=geojson`,
+            {}, { retries: 1 });
+          const rt = ((await res.json()).routes || [])[0];
+          if (!rt) return null;
+          let g = rt.geometry.coordinates.map((c) => [c[1], c[0]]);
+          const step = Math.ceil(g.length / 150);
+          if (step > 1) g = g.filter((_, i) => i % step === 0 || i === g.length - 1);
+          ROUTE_CACHE[k] = { km: rt.distance / 1000, geo: g };
+          try { localStorage.setItem("ff_route_cache", JSON.stringify(ROUTE_CACHE)); } catch (e) {}
+          return ROUTE_CACHE[k];
+        } catch (e) { return null; }
+      }
+
+      // ----- หน้ารายการ Trip -----
+      async function renderTripView(force) {
+        const list = $id("tripListPanel");
+        if (!STATE.activeCarId) {
+          $id("tripDetailPanel").style.display = "none";
+          list.style.display = "block";
+          list.innerHTML = '<div class="empty-state"><div class="em-ic">🚗</div><div class="em-t">ยังไม่มีรถ</div><div class="em-s">เพิ่มรถก่อน ที่ปุ่มชื่อรถด้านบน</div></div>';
+          return;
+        }
+        if (force || STATE.tripsCarId !== STATE.activeCarId) {
+          list.style.display = "block";
+          $id("tripDetailPanel").style.display = "none";
+          list.innerHTML = '<div class="hint" style="text-align:center;padding:30px 0">กำลังโหลด Trip...</div>';
+          try { await loadTrips(); } catch (e) { toast("โหลด Trip ไม่สำเร็จ: " + friendlyErrorMessage(e)); STATE.trips = []; STATE.tripPoints = []; }
+        }
+        if (STATE.openTripId && tripById(STATE.openTripId)) renderTripDetail();
+        else { STATE.openTripId = null; renderTripList(); }
+      }
+      function renderTripList() {
+        $id("tripDetailPanel").style.display = "none";
+        const list = $id("tripListPanel");
+        list.style.display = "block";
+        const cards = STATE.trips.map((t) => {
+          const st = tripStats(t), act = t.status !== "finished";
+          return swipeWrapHtml("trip", t.id, t.name, `<div class="card trip-card" onclick="openTrip('${t.id}')">
+            <div class="trip-card-top"><div class="trip-card-name">${escapeHtml(t.name)}</div>
+              <span class="trip-badge ${act ? "active" : ""}">${act ? "กำลังเดินทาง" : "เสร็จสิ้น"}</span></div>
+            <div class="hint" style="margin:4px 0 0">${fmtDT(t.startedAt)} · ${st.pts.length} จุด · ${fmt(st.km)} กม.${st.cost ? ` · ⛽ ${fmt(st.cost)} บาท` : ""}</div>
+          </div>`, "trip-card-wrap");
+        }).join("");
+        list.innerHTML = `<div class="section-title" style="margin-top:6px">Trip</div>
+          ${STATE.trips.length ? '<div class="hint swipe-hint">ปัดการ์ดไปทางซ้าย หรือกดค้าง เพื่อแก้ไข/ลบ</div>' : ""}
+          ${cards || '<div class="empty-state"><div class="em-ic">🧭</div><div class="em-t">ยังไม่มี Trip</div><div class="em-s">เริ่ม Trip แรกของรถคันนี้ได้เลย</div></div>'}
+          <div class="add-car-card" onclick="openTripModal()"><div style="font-size:22px">＋</div><div>เริ่ม Trip ใหม่</div></div>`;
+      }
+
+      function openTripModal(id) {
+        STATE.editingTripId = id || null;
+        $id("tripModalTitle").textContent = id ? "แก้ไข Trip" : "เริ่ม Trip ใหม่";
+        $id("tripNameInput").value = id ? tripById(id).name : "";
+        const sb = $id("saveTripBtn");
+        sb.classList.remove("is-loading", "is-success", "is-error"); sb.disabled = false;
+        $id("tripCarField").style.display = id ? "block" : "none";
+        if (id) {
+          $id("tripCarSelect").innerHTML = STATE.cars.map((c) => `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.name)}</option>`).join("");
+          $id("tripCarSelect").value = String(tripById(id).carId);
+        }
+        $id("tripModalOverlay").classList.add("open");
+        setTimeout(() => $id("tripNameInput").focus(), 100);
+      }
+
+      // ย้าย Trip ไปรถคันอื่น: ย้ายประวัติเติมน้ำมันที่ผูกกับจุดต่าง ๆ + เปลี่ยน carId ของจุดทั้งหมด
+      async function moveTripToCar(trip, newCarId) {
+        for (const p of tripPts(trip.id)) {
+          if (p.fuelLogId) {
+            const info = findOilInfo(p.fuelType);
+            const cost = numOrNull(p.fuelCost) || 0, liters = numOrNull(p.fuelLiters) || 0;
+            const d = new Date(tripMs(p.arriveAt) - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+            await apiPost("updateFuelLog", {
+              id: p.fuelLogId, carId: newCarId, date: d, odometer: numOrNull(p.odometer) || 0, fuelType: p.fuelType || "",
+              fuelIcon: info ? info.icon : "", pricePerLiter: liters > 0 ? round2(cost / liters) : 0, liters, totalCost: cost,
+              isFullTank: isTrue(p.isFullTank), note: `Trip: ${trip.name} @ ${p.name}`,
+            });
+          }
+          await apiPost("updateTripPoint", { id: p.id, tripId: trip.id, carId: newCarId });
+        }
+      }
+      async function saveTrip() {
+        const name = $id("tripNameInput").value.trim();
+        if (!name) return toast("กรุณากรอกชื่อ Trip");
+        const editing = STATE.editingTripId ? tripById(STATE.editingTripId) : null;
+        const newCarId = editing ? $id("tripCarSelect").value : null;
+        const carChanged = !!editing && String(newCarId) !== String(editing.carId);
+        if (carChanged && !confirm("ย้าย Trip นี้ไปรถคันที่เลือก? ประวัติเติมน้ำมันที่บันทึกจาก Trip จะย้ายตามไปด้วย")) return;
+        const btn = $id("saveTripBtn");
+        try {
+          await morph(btn, async () => {
+            if (editing) {
+              if (carChanged) await moveTripToCar(editing, newCarId);
+              await apiPost("updateTrip", { id: editing.id, name, carId: newCarId });
+            } else {
+              const r = await apiPost("addTrip", { carId: STATE.activeCarId, name, status: "active", startedAt: toMin(Date.now()), endedAt: "" });
+              STATE.openTripId = r.id;
+            }
+            await loadTrips();
+          });
+        } catch (e) { return toast("บันทึกไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+        closeOverlay("tripModalOverlay");
+        if (carChanged) {
+          STATE.openTripId = null;
+          const c = STATE.cars.find((x) => String(x.id) === String(newCarId));
+          toast(`ย้าย Trip ไปที่ ${c ? c.name : "รถคันใหม่"} แล้ว`);
+          refreshFuelLogsAfterTrip();
+        }
+        renderTripView();
+      }
+
+      function openTrip(id) { STATE.openTripId = id; renderTripView(); window.scrollTo(0, 0); }
+      function closeTrip() { STATE.openTripId = null; renderTripView(); }
+      async function deleteTripConfirm(id) {
+        if (!confirm("ลบ Trip นี้และจุดทั้งหมด? (ประวัติเติมน้ำมันที่เคยบันทึกจาก Trip จะยังอยู่)")) return;
+        setBusy("trip", id, true);
+        try {
+          await apiPost("deleteTrip", { id });
+          STATE.openTripId = null;
+          await loadTrips(); renderTripView(); toast("ลบ Trip แล้ว");
+        } catch (e) { setBusy("trip", id, false); toast("ลบไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+      }
+
+      // ----- หน้ารายละเอียด + รายงานสรุป -----
+      const SRC_LABEL = { odo: "เลขไมล์", road: "ตามถนน", line: "เส้นตรง (ประมาณ)" };
+      function renderTripDetail() {
+        const trip = tripById(STATE.openTripId);
+        if (!trip) return renderTripList();
+        const st = tripStats(trip), done = trip.status === "finished";
+        const car = STATE.cars.find((c) => String(c.id) === String(trip.carId));
+        $id("tripListPanel").style.display = "none";
+        const el = $id("tripDetailPanel");
+        el.style.display = "block";
+        el.classList.remove("panel-busy");
+        const box = (k, v) => `<div class="stat-box"><div class="k">${k}</div><div class="v">${v}</div></div>`;
+        const stats = [
+          box("ระยะทางรวม", `${fmt(st.km)} กม.`),
+          box("เวลารวม", fmtDur(st.totalMs)),
+          box("เวลาขับ", fmtDur(st.moveMs || null)),
+          box("เวลาจอดแวะ", fmtDur(st.stayMs)),
+          box("ค่าน้ำมันรวม", st.cost ? `${fmt(st.cost)} บาท` : "--"),
+          box("น้ำมันรวม", st.liters ? `${fmt(st.liters)} ลิตร` : "--"),
+          box("อัตราสิ้นเปลือง (ประมาณ)", st.kml ? `${fmt(st.kml)} กม./ล.` : "--"),
+          box("ค่าน้ำมัน/กม.", st.perKm ? `${fmt(st.perKm)} บาท` : "--"),
+          box("ความเร็วเฉลี่ย", st.avgSpeed ? `${fmt(st.avgSpeed)} กม./ชม.` : "--"),
+          box("แวะเติมน้ำมัน", `${st.fuelStops} ครั้ง`),
+        ].join("");
+        const items = st.pts.map((p, i) => {
+          const leg = i > 0 ? st.legs[i - 1] : null;
+          const a = tripMs(p.arriveAt), d = tripMs(p.departAt);
+          const isStart = i === 0, isLast = i === st.pts.length - 1;
+          const fuel = numOrNull(p.fuelLiters) > 0 || numOrNull(p.fuelCost) > 0;
+          const ppl = numOrNull(p.fuelCost) && numOrNull(p.fuelLiters) ? numOrNull(p.fuelCost) / numOrNull(p.fuelLiters) : null;
+          const card = `<div class="trip-point ${isStart ? "is-start" : ""}">
+            <div class="trip-pin ${isStart ? "start" : ""}">${isStart ? '<i class="fas fa-flag"></i>' : i}</div>
+            <div class="trip-point-body">
+              <div class="trip-point-name">${escapeHtml(p.name)}</div>
+              <span class="trip-tag ${isStart ? "start" : ""}">${isStart ? "🚩 จุดเริ่มต้น" : `จุดแวะที่ ${i}`}</span>
+              <div class="hint" style="margin:5px 0 2px">${isStart ? "เริ่ม" : "ถึง"} ${fmtDT(p.arriveAt)}${d != null ? ` · ออก ${fmtDT(p.departAt)} · ${isStart ? "ใช้เวลา" : "จอด"} ${fmtDur(d - a)}` : ""}</div>
+              ${numOrNull(p.odometer) != null ? `<div class="hint" style="margin:2px 0">เลขไมล์ ${fmt(p.odometer)} กม.</div>` : ""}
+              ${fuel ? `<div class="trip-fuel">⛽ เติม ${fmt(p.fuelCost)} บาท · ${fmt(p.fuelLiters)} ลิตร${ppl ? ` · ${fmt(ppl)} บาท/ล.` : ""}</div>` : ""}
+              ${p.note ? `<div class="hint" style="margin:2px 0">📝 ${escapeHtml(p.note)}</div>` : ""}
+              ${!done && isLast && d == null ? `<div data-html2canvas-ignore><button class="btn btn-outline btn-sm" style="margin-top:8px" onclick="departPoint('${p.id}')">🚗 ออกจากจุดนี้ (ตอนนี้)</button></div>` : ""}
+            </div>
+          </div>`;
+          return `${leg ? `<div class="trip-leg">↓ ${leg.km != null ? fmt(leg.km) + " กม." : "-- กม."} <span>(${SRC_LABEL[leg.src] || "ไม่มีพิกัด"})</span> · ใช้เวลา ${fmtDur(leg.ms)}</div>` : ""}
+            ${done ? card : swipeWrapHtml("point", p.id, p.name, card, "trip-point-wrap")}`;
+        }).join("");
+        const addLabel = st.pts.length ? "＋ เพิ่มจุดแวะ" : "＋ เพิ่มจุดเริ่มต้น";
+        el.innerHTML = `
+          <div class="trip-head" data-html2canvas-ignore>
+            <button class="btn btn-ghost btn-sm" onclick="closeTrip()">‹ รายการ Trip</button>
+            <button class="icon-btn trip-kebab" data-name="${escapeHtml(trip.name)}" onclick="openActionSheetFor('trip','${trip.id}',this.dataset.name)" title="แก้ไขชื่อ / ลบ Trip">⋯</button>
+          </div>
+          <div id="tripReport" class="trip-report">
+            <div class="trip-title">${escapeHtml(trip.name)}</div>
+            <div class="hint" style="margin:2px 0 12px">${car ? escapeHtml(car.name) + " · " : ""}${fmtDT(trip.startedAt)}${done ? " – " + fmtDT(trip.endedAt) : ""} · ${done ? "เสร็จสิ้น" : "กำลังเดินทาง"}</div>
+            ${done ? '<div class="section-title" style="margin-top:0">รายงานสรุป Trip</div>' : ""}
+            <div class="stat-grid">${stats}</div>
+            ${st.hasEstimate ? '<div class="hint">* บางช่วงใช้ระยะเส้นตรงเป็นค่าประมาณ (ยังหาเส้นทางถนนไม่ได้หรือออฟไลน์)</div>' : ""}
+            <div id="tripMap" class="trip-map"></div>
+            ${!done && st.pts.length ? '<div class="hint swipe-hint" data-html2canvas-ignore>ปัดจุดไปทางซ้าย หรือกดค้าง เพื่อแก้ไข/ลบ</div>' : ""}
+            <div class="trip-timeline">${items || '<div class="hint" style="text-align:center;padding:16px 0">ยังไม่มีจุด เริ่มจากการเพิ่ม "จุดเริ่มต้น"</div>'}</div>
+          </div>
+          <div class="trip-actions" data-html2canvas-ignore>
+            ${done
+              ? `<button class="btn btn-primary" onclick="shareTripImage()">📤 แชร์เป็นรูป</button>
+                 <button class="btn btn-outline" onclick="saveTripPdf()">📄 บันทึกเป็น PDF</button>
+                 <button class="btn btn-ghost" onclick="reopenTrip('${trip.id}')">เปิด Trip อีกครั้ง</button>`
+              : `<button class="btn btn-outline" onclick="openPointModal()">${addLabel}</button>
+                 <button class="btn btn-primary btn-morph" id="finishTripBtn" onclick="finishTrip('${trip.id}')">${morphInner("🏁 จบ Trip และสรุปผล")}</button>`}
+          </div>`;
+        drawTripMap(st);
+      }
+
+      function drawTripMap(st) {
+        if (tripMap) { tripMap.remove(); tripMap = null; }
+        const div = $id("tripMap");
+        if (!div || typeof L === "undefined") { if (div) div.innerHTML = '<div class="hint" style="padding:20px">โหลดแผนที่ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต</div>'; return; }
+        const pts = st.pts.filter(hasLL);
+        tripMap = L.map(div, { zoomControl: true, attributionControl: true });
+        L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, crossOrigin: true, attribution: "© OpenStreetMap" }).addTo(tripMap);
+        if (!pts.length) { tripMap.setView([13.75, 100.5], 6); return; }
+        const ll = pts.map((p) => [Number(p.lat), Number(p.lng)]);
+        pts.forEach((p, i) => L.marker(ll[i], { icon: L.divIcon({ className: "", html: st.pts.indexOf(p) === 0 ? '<div class="trip-pin map start"><i class="fas fa-flag"></i></div>' : `<div class="trip-pin map">${st.pts.indexOf(p)}</div>`, iconSize: [28, 28], iconAnchor: [14, 14] }) }).addTo(tripMap).bindPopup(escapeHtml(p.name)));
+        tripMap.fitBounds(L.latLngBounds(ll).pad(0.25), { maxZoom: 15 });
+        // เส้นระหว่างจุด + ป้ายระยะทาง (เริ่มจากเส้นตรง แล้วเปลี่ยนเป็นเส้นทางถนนเมื่อได้ข้อมูล)
+        const trip = tripById(STATE.openTripId);
+        const tripId = trip && trip.id;
+        let changed = false;
+        const jobs = st.legs.map(async (l) => {
+          if (!hasLL(l.a) || !hasLL(l.b)) return;
+          const A = [Number(l.a.lat), Number(l.a.lng)], B = [Number(l.b.lat), Number(l.b.lng)];
+          const had = !!ROUTE_CACHE[legKey(l.a, l.b)];
+          const line = L.polyline([A, B], { color: "#ff7a29", weight: 4, dashArray: "6 8", opacity: 0.9 }).addTo(tripMap);
+          const lbl = L.marker([(A[0] + B[0]) / 2, (A[1] + B[1]) / 2], { interactive: false, icon: L.divIcon({ className: "", html: `<div class="trip-leg-label">${l.km != null ? fmt(l.km) + " กม." : ""}</div>`, iconSize: [70, 20], iconAnchor: [35, 10] }) }).addTo(tripMap);
+          const r = ROUTE_CACHE[legKey(l.a, l.b)] || (await fetchRoad(l.a, l.b));
+          if (!r || !tripMap || STATE.openTripId !== tripId) return;
+          line.setLatLngs(r.geo).setStyle({ dashArray: null });
+          if (!had) changed = true;
+        });
+        Promise.all(jobs).then(() => {
+          // ได้ระยะตามถนนใหม่ → วาดรายงานใหม่หนึ่งครั้งให้ตัวเลขตรงกัน
+          if (changed && STATE.openTripId === tripId && $id("tripMap")) renderTripDetail();
+        });
+      }
+
+      // ----- เพิ่ม/แก้ไข/ลบจุด -----
+      function openPointModal(id) {
+        const trip = tripById(STATE.openTripId);
+        if (!trip) return;
+        STATE.editingPointId = id || null;
+        const pts = tripPts(trip.id);
+        const p = id ? STATE.tripPoints.find((x) => String(x.id) === String(id)) : null;
+        const isStart = p ? pts.length && String(pts[0].id) === String(p.id) : pts.length === 0;
+        const car = STATE.cars.find((c) => String(c.id) === String(trip.carId));
+        $id("pointModalTitle").textContent = (p ? "แก้ไข" : "เพิ่ม") + (isStart ? "จุดเริ่มต้น" : "จุดแวะ");
+        $id("ptArriveLabel").textContent = isStart ? "เวลาเริ่มต้น" : "เวลาถึง";
+        const sb = $id("savePointBtn");
+        sb.classList.remove("is-loading", "is-success", "is-error"); sb.disabled = false;
+        const sel = $id("ptFuelType");
+        sel.innerHTML = (STATE.oilPrices && STATE.oilPrices.list ? STATE.oilPrices.list.map((o) => o.name) : [])
+          .concat(car && car.fuelType ? [car.fuelType] : [])
+          .filter((v, i, a) => v && a.indexOf(v) === i)
+          .map((n) => `<option>${escapeHtml(n)}</option>`).join("") || `<option>${escapeHtml((car && car.fuelType) || "น้ำมัน")}</option>`;
+        ptNameAuto = false;
+        $id("ptName").value = p ? p.name : "";
+        $id("ptLink").value = ""; $id("ptLinkHint").textContent = "";
+        $id("ptLat").value = p ? p.lat : "";
+        $id("ptLng").value = p ? p.lng : "";
+        if (!$id("ptArriveBox").firstChild) { buildDt("ptArriveBox", false); buildDt("ptDepartBox", true); }
+        setDt("ptArriveBox", p ? tripMs(p.arriveAt) : Date.now());
+        setDt("ptDepartBox", p ? tripMs(p.departAt) : null);
+        $id("ptOdo").value = p ? p.odometer : "";
+        const fuelOn = !!(p && (numOrNull(p.fuelLiters) > 0 || p.fuelLogId));
+        $id("ptFuelOn").checked = fuelOn;
+        if (p && p.fuelType) sel.value = p.fuelType; else if (car && car.fuelType) sel.value = car.fuelType;
+        // ราคา/ลิตร: แก้ไขรายการเดิม → ใช้ราคาที่เติมจริง, เพิ่มใหม่ → ใช้ราคาวันนี้ของชนิดน้ำมันนั้น
+        const oldPpl = p && numOrNull(p.fuelCost) && numOrNull(p.fuelLiters) ? numOrNull(p.fuelCost) / numOrNull(p.fuelLiters) : null;
+        const info = findOilInfo(sel.value);
+        $id("ptPrice").value = oldPpl ? round2(oldPpl) : info ? info.priceToday : "";
+        $id("ptCost").value = p ? p.fuelCost : "";
+        $id("ptLiters").value = p ? p.fuelLiters : "";
+        ptLast = "cost";
+        $id("ptFull").checked = p ? isTrue(p.isFullTank) : false;
+        $id("ptNote").value = p ? p.note : "";
+        togglePointFuel();
+        $id("pointModalOverlay").classList.add("open");
+      }
+
+      function togglePointFuel() { $id("ptFuelBox").style.display = $id("ptFuelOn").checked ? "block" : "none"; }
+      let ptLast = "cost", ptNameAuto = false;
+      function onPtFuelType() {
+        const info = findOilInfo($id("ptFuelType").value);
+        if (info) $id("ptPrice").value = info.priceToday;
+        ptCalc("price");
+      }
+      // เหมือนการเติมน้ำมันหลัก: กรอกบาทหรือลิตรอย่างใดอย่างหนึ่ง อีกค่าคำนวณจากราคาต่อลิตร
+      function ptCalc(src) {
+        if (src === "cost" || src === "liters") ptLast = src;
+        const price = Number($id("ptPrice").value), cost = $id("ptCost"), liters = $id("ptLiters");
+        if (!(price > 0)) return;
+        if (ptLast === "cost" && cost.value !== "") liters.value = round2(Number(cost.value) / price);
+        else if (ptLast === "liters" && liters.value !== "") cost.value = round2(Number(liters.value) * price);
+        $id("ptPpl").textContent = `คำนวณจากราคา ${fmt(price)} บาท/ลิตร`;
+      }
+
+      // วางลิงก์ Google Maps หรือ "lat, lng" ในช่องแรก ระบบแยกพิกัดให้เอง
+      // อ่านพิกัด/ชื่อจากข้อความ: รองรับ "lat, lng" และลิงก์ Google Maps แบบเต็ม
+      function parseMapsText(str) {
+        let t = str;
+        try { t = decodeURIComponent(str); } catch (e) {}
+        let m = t.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
+        if (!m) {
+          const at = t.match(/@(-?\d+\.\d+),(-?\d+\.\d+)(?:,(\d+(?:\.\d+)?)(z|m))?/);
+          // ซูมต่ำ (z < 8) คือมุมมองกว้างของแผนที่ ไม่ใช่ตำแหน่งสถานที่
+          if (at && !(at[4] === "z" && Number(at[3]) < 8)) m = at;
+        }
+        if (!m) m = t.match(/[?&](?:q|query|ll|center|destination)=(-?\d+\.\d+)[,\s+]+(-?\d+\.\d+)/);
+        if (!m) m = t.match(/^\s*(-?\d{1,3}\.\d+)\s*[,\s]\s*(-?\d{1,3}\.\d+)\s*$/);
+        if (!m) return null;
+        const lat = Number(m[1]), lng = Number(m[2]);
+        if (Math.abs(lat - 37.0625) < 0.001 && Math.abs(lng + 95.677) < 0.01) return null; // พิกัดตั้งต้นของ Google Maps
+        const n = t.match(/\/maps\/place\/([^/@?]+)/) || t.match(/[?&](?:q|query)=([^&]+)/);
+        let name = n ? n[1].replace(/\+/g, " ").trim() : "";
+        if (/^-?\d+\.\d+/.test(name)) name = "";
+        return { lat, lng, name };
+      }
+      function applyLinkInfo(i) {
+        $id("ptLat").value = Number(i.lat).toFixed(6);
+        $id("ptLng").value = Number(i.lng).toFixed(6);
+        ["ptLat", "ptLng"].forEach((x) => { const e = $id(x); e.classList.remove("flash"); void e.offsetWidth; e.classList.add("flash"); });
+        if (i.name && (!$id("ptName").value.trim() || ptNameAuto)) { $id("ptName").value = i.name; ptNameAuto = true; }
+        $id("ptLinkHint").textContent = `✅ ได้พิกัดแล้ว${i.name ? " · " + i.name : ""}`;
+      }
+      async function resolvePointLink() {
+        const v = $id("ptLink").value.trim();
+        if (!v) return;
+        let info = parseMapsText(v);
+        const isUrl = /^https?:\/\//i.test(v);
+        if (info) {
+          applyLinkInfo(info);
+          if (info.name || !isUrl) return;
+          // มีพิกัดแต่ไม่มีชื่อ → ให้เซิร์ฟเวอร์ลองดึงชื่อสถานที่จากลิงก์ต่อ (พิกัดที่ได้แล้วคงเดิม)
+        } else if (!isUrl) { $id("ptLinkHint").textContent = "ไม่พบพิกัดในข้อความที่วาง"; return; }
+        const keep = info;
+        const wrap = $id("ptLinkWrap");
+        wrap.classList.add("busy");
+        $id("ptLinkHint").textContent = "กำลังอ่านลิงก์...";
+        try {
+          const r = await apiGet("resolveMapLink", { url: v });
+          if (!r || r.lat == null) throw new Error("ไม่พบพิกัดในลิงก์นี้");
+          applyLinkInfo(keep ? { lat: keep.lat, lng: keep.lng, name: r.name } : r);
+        } catch (e) {
+          if (keep) return; // ได้พิกัดแล้ว แค่ไม่ได้ชื่อ ไม่ต้องแจ้งว่าล้มเหลว
+          let msg = friendlyErrorMessage(e);
+          if (/Unknown GET action/i.test(msg)) msg = "Apps Script ยังเป็นเวอร์ชันเก่า ให้วาง Code.gs ใหม่แล้ว Deploy เป็น New version";
+          $id("ptLinkHint").textContent = "⚠️ อ่านลิงก์ไม่สำเร็จ: " + msg;
+        } finally { wrap.classList.remove("busy"); }
+      }
+
+      function usePointGps() {
+        if (!navigator.geolocation) return toast("อุปกรณ์นี้ไม่รองรับ GPS");
+        const btn = $id("ptGpsBtn");
+        btn.disabled = true;
+        btn.innerHTML = '<span class="mini-spin on"></span> กำลังหาตำแหน่ง...';
+        const reset = () => { btn.disabled = false; btn.textContent = "📍 ตำแหน่งปัจจุบัน"; };
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            reset();
+            applyLinkInfo({ lat: pos.coords.latitude, lng: pos.coords.longitude, name: "" });
+            $id("ptLinkHint").textContent = "✅ ใช้ตำแหน่งปัจจุบันแล้ว";
+          },
+          () => { reset(); toast("หาตำแหน่งไม่ได้ ตรวจสอบสิทธิ์ตำแหน่งของเบราว์เซอร์ (ต้องเปิดผ่าน https)"); },
+          { enableHighAccuracy: true, timeout: 12000 });
+      }
+
+      let youMarker = null, youCircle = null;
+      function openPickMap() {
+        $id("pickMapOverlay").classList.add("open");
+        const la = numOrNull($id("ptLat").value), ln = numOrNull($id("ptLng").value);
+        const last = tripPts(STATE.openTripId).filter(hasLL).pop();
+        setTimeout(() => {
+          if (!pickMap) {
+            pickMap = L.map("pickMap");
+            L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19, attribution: "© OpenStreetMap" }).addTo(pickMap);
+            pickMap.on("click", (e) => setPick(e.latlng.lat, e.latlng.lng));
+          }
+          pickMap.invalidateSize();
+          pickLL = null;
+          if (pickMarker) { pickMarker.remove(); pickMarker = null; }
+          const hasCoord = la != null && ln != null;
+          // ถ้ามีพิกัดอยู่แล้วเริ่มที่พิกัดนั้น ไม่งั้นรอตำแหน่งปัจจุบัน (ระหว่างรอเริ่มที่จุดล่าสุด/กรุงเทพ)
+          pickMap.setView(hasCoord ? [la, ln] : last ? [Number(last.lat), Number(last.lng)] : [13.75, 100.5], hasCoord || last ? 14 : 6);
+          if (hasCoord) setPick(la, ln); else $id("pickMapHint").textContent = "ยังไม่ได้เลือกตำแหน่ง";
+          locateOnPickMap(!hasCoord);
+        }, 80);
+      }
+      // แสดงจุดสีน้ำเงิน = ตำแหน่งปัจจุบันของเรา (recenter = true จะเลื่อนแผนที่ไปหาด้วย)
+      function locateOnPickMap(recenter) {
+        const btn = $id("pickLocateBtn");
+        if (!navigator.geolocation) { if (recenter) $id("pickMapHint").textContent = "อุปกรณ์นี้ไม่รองรับ GPS แตะบนแผนที่เพื่อเลือกเอง"; return; }
+        btn.classList.add("loading");
+        if (recenter && !pickLL) $id("pickMapHint").textContent = "กำลังหาตำแหน่งปัจจุบันของคุณ...";
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            btn.classList.remove("loading");
+            const ll = [pos.coords.latitude, pos.coords.longitude];
+            if (youMarker) { youMarker.setLatLng(ll); youCircle.setLatLng(ll).setRadius(pos.coords.accuracy || 30); }
+            else {
+              youCircle = L.circle(ll, { radius: pos.coords.accuracy || 30, color: "#4f8dff", weight: 1, fillOpacity: 0.12, interactive: false }).addTo(pickMap);
+              youMarker = L.circleMarker(ll, { radius: 8, color: "#fff", weight: 3, fillColor: "#4f8dff", fillOpacity: 1, interactive: false }).addTo(pickMap);
+            }
+            if (recenter) { pickMap.setView(ll, 16); if (!pickLL) $id("pickMapHint").textContent = "📍 จุดสีน้ำเงินคือตำแหน่งปัจจุบันของคุณ แตะบนแผนที่เพื่อเลือกจุด"; }
+          },
+          () => {
+            btn.classList.remove("loading");
+            if (recenter && !pickLL) $id("pickMapHint").textContent = "หาตำแหน่งปัจจุบันไม่ได้ (ตรวจสอบสิทธิ์ตำแหน่ง/https) แตะบนแผนที่เพื่อเลือกเอง";
+          },
+          { enableHighAccuracy: true, timeout: 12000 });
+      }
+
+      function setPick(lat, lng) {
+        pickLL = [lat, lng];
+        if (pickMarker) pickMarker.setLatLng(pickLL); else pickMarker = L.marker(pickLL).addTo(pickMap);
+        $id("pickMapHint").textContent = `เลือกแล้ว: ${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
+      function confirmPickMap() {
+        if (!pickLL) return toast("แตะบนแผนที่เพื่อเลือกตำแหน่งก่อน");
+        $id("ptLat").value = pickLL[0].toFixed(6);
+        $id("ptLng").value = pickLL[1].toFixed(6);
+        closeOverlay("pickMapOverlay");
+      }
+
+      async function savePoint() {
+        const trip = tripById(STATE.openTripId);
+        if (!trip) return;
+        const pts = tripPts(trip.id);
+        const old = STATE.editingPointId ? STATE.tripPoints.find((x) => String(x.id) === String(STATE.editingPointId)) : null;
+        const lat = numOrNull($id("ptLat").value), lng = numOrNull($id("ptLng").value);
+        if (lat == null || lng == null) return toast("กรุณาระบุพิกัด (วางลิงก์ / ตำแหน่งปัจจุบัน / เลือกบนแผนที่ / กรอกเอง)");
+        const arrive = getDt("ptArriveBox"), depart = getDt("ptDepartBox");
+        if (arrive == null) return toast("กรุณาระบุเวลา");
+        if (depart != null && depart < arrive) return toast("เวลาออกต้องไม่ก่อนเวลาถึง");
+        if (!old && pts.length && arrive < (tripMs(pts[pts.length - 1].arriveAt) || 0) &&
+          !confirm("เวลาของจุดนี้อยู่ก่อนจุดล่าสุด ระบบจะจัดลำดับให้อยู่ก่อนจุดล่าสุด ดำเนินการต่อไหม?")) return;
+        const odo = numOrNull($id("ptOdo").value);
+        const fuelOn = $id("ptFuelOn").checked;
+        const price = numOrNull($id("ptPrice").value);
+        let cost = numOrNull($id("ptCost").value), liters = numOrNull($id("ptLiters").value);
+        if (fuelOn) {
+          if (!cost && !liters) return toast("กรุณากรอกจำนวนเงินหรือจำนวนลิตรที่เติม");
+          if ((!cost || !liters) && !price) return toast("กรุณากรอกราคาต่อลิตร เพื่อคำนวณอีกค่า");
+          if (!liters) liters = round2(cost / price);
+          if (!cost) cost = round2(liters * price);
+          if (!odo) return toast("ต้องกรอกเลขไมล์ เพื่อบันทึกลงประวัติเติมน้ำมัน");
+        }
+        const idx = old ? pts.findIndex((x) => String(x.id) === String(old.id)) : pts.length;
+        const name = $id("ptName").value.trim() || (idx === 0 ? "จุดเริ่มต้น" : `จุดแวะที่ ${idx}`);
+        const fuelType = $id("ptFuelType").value, isFull = $id("ptFull").checked;
+        const btn = $id("savePointBtn");
+        try {
+          await morph(btn, async () => {
+            let fuelLogId = (old && old.fuelLogId) || "";
+            if (fuelOn) {
+              const info = findOilInfo(fuelType);
+              const d = new Date(arrive - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+              const log = { carId: trip.carId, date: d, odometer: odo, fuelType, fuelIcon: info ? info.icon : "", pricePerLiter: price > 0 ? price : round2(cost / liters), liters, totalCost: cost, isFullTank: isFull, note: `Trip: ${trip.name} @ ${name}` };
+              if (fuelLogId) await apiPost("updateFuelLog", { ...log, id: fuelLogId });
+              else fuelLogId = (await apiPost("addFuelLog", log)).id;
+            } else if (fuelLogId) {
+              await apiPost("deleteFuelLog", { id: fuelLogId });
+              fuelLogId = "";
+            }
+            const payload = {
+              tripId: trip.id, carId: trip.carId, name, lat, lng, arriveAt: toMin(arrive), departAt: depart == null ? "" : toMin(depart),
+              odometer: odo == null ? "" : odo, fuelType: fuelOn ? fuelType : "", fuelCost: fuelOn ? cost : "", fuelLiters: fuelOn ? liters : "",
+              isFullTank: fuelOn ? isFull : false, fuelLogId, note: $id("ptNote").value.trim(),
+            };
+            if (old) await apiPost("updateTripPoint", { ...payload, id: old.id });
+            else await apiPost("addTripPoint", payload);
+            await loadTrips();
+          });
+        } catch (e) { return toast("บันทึกไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+        closeOverlay("pointModalOverlay");
+        renderTripDetail();
+        if (fuelOn || (old && old.fuelLogId)) refreshFuelLogsAfterTrip();
+      }
+
+      // อัปเดตประวัติเติมน้ำมันหลักให้ตรงกับที่เพิ่ม/แก้/ลบจาก Trip (ทำเบื้องหลัง)
+      async function refreshFuelLogsAfterTrip() {
+        try { await refreshLogs(STATE.activeCarId); populateMainMonthDropdown(); renderHome(); } catch (e) {}
+      }
+      async function departPoint(id) {
+        setBusy("point", id, true);
+        try { await apiPost("updateTripPoint", { id, departAt: toMin(Date.now()) }); await loadTrips(); renderTripDetail(); toast("บันทึกเวลาออกจากจุดแล้ว"); }
+        catch (e) { setBusy("point", id, false); toast("บันทึกไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+      }
+
+      async function deletePoint(id) {
+        const p = STATE.tripPoints.find((x) => String(x.id) === String(id));
+        if (!p || !confirm(`ลบจุด "${p.name}"?` + (p.fuelLogId ? "\nประวัติเติมน้ำมันที่บันทึกจากจุดนี้จะถูกลบด้วย" : ""))) return;
+        setBusy("point", id, true);
+        try {
+          if (p.fuelLogId) await apiPost("deleteFuelLog", { id: p.fuelLogId });
+          await apiPost("deleteTripPoint", { id, tripId: p.tripId });
+          await loadTrips(); renderTripDetail(); toast("ลบจุดแล้ว");
+          if (p.fuelLogId) refreshFuelLogsAfterTrip();
+        } catch (e) { setBusy("point", id, false); toast("ลบไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+      }
+
+      // ----- จบ Trip / เปิดใหม่ -----
+      async function finishTrip(id) {
+        if (tripPts(id).length < 2 && !confirm("Trip นี้มีไม่ถึง 2 จุด รายงานจะยังไม่มีระยะทาง จบ Trip เลยไหม?")) return;
+        try {
+          await morph($id("finishTripBtn"), async () => {
+            await apiPost("updateTrip", { id, status: "finished", endedAt: toMin(Date.now()) });
+            await loadTrips();
+          });
+        } catch (e) { return toast("ไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+        renderTripDetail(); window.scrollTo(0, 0);
+        toast("จบ Trip แล้ว นี่คือรายงานสรุป");
+      }
+
+      async function reopenTrip(id) {
+        setBusy("trip", id, true);
+        try { await apiPost("updateTrip", { id, status: "active", endedAt: "" }); await loadTrips(); renderTripDetail(); }
+        catch (e) { setBusy("trip", id, false); toast("ไม่สำเร็จ: " + friendlyErrorMessage(e)); }
+      }
+
+      // ----- แชร์รูป / PDF -----
+      async function captureTripReport() {
+        toast("กำลังสร้างรายงาน...");
+        if (typeof html2canvas === "undefined") throw new Error("โหลดตัวสร้างรูปไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต");
+        return html2canvas($id("tripReport"), {
+          useCORS: true, scale: 2,
+          backgroundColor: getComputedStyle(document.body).backgroundColor,
+          ignoreElements: (e) => e.hasAttribute && e.hasAttribute("data-html2canvas-ignore"),
+        });
+      }
+      const tripFileName = () => ((tripById(STATE.openTripId) || {}).name || "trip").replace(/[^\p{L}\p{N}_-]+/gu, "_");
+      async function shareTripImage() {
+        try {
+          const c = await captureTripReport();
+          const blob = await new Promise((r) => c.toBlob(r, "image/png"));
+          const file = new File([blob], `trip-${tripFileName()}.png`, { type: "image/png" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            try { await navigator.share({ files: [file], title: "สรุป Trip" }); return; }
+            catch (e) { if (e.name === "AbortError") return; }
+          }
+          const a = document.createElement("a");
+          a.href = URL.createObjectURL(blob); a.download = file.name; a.click();
+          setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+          toast("บันทึกรูปแล้ว");
+        } catch (e) { toast("สร้างรูปไม่สำเร็จ: " + (e.message || e)); }
+      }
+      async function saveTripPdf() {
+        try {
+          const c = await captureTripReport();
+          if (!window.jspdf) throw new Error("โหลดตัวสร้าง PDF ไม่สำเร็จ ตรวจสอบอินเทอร์เน็ต");
+          const w = c.width / 2, h = c.height / 2;
+          const pdf = new window.jspdf.jsPDF({ orientation: w > h ? "l" : "p", unit: "px", format: [w, h] });
+          pdf.addImage(c.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, w, h);
+          pdf.save(`trip-${tripFileName()}.pdf`);
+          toast("บันทึก PDF แล้ว");
+        } catch (e) { toast("สร้าง PDF ไม่สำเร็จ: " + (e.message || e)); }
       }
 
       // ---------------- Oil prices (บางจาก — ราคาวันนี้ + เมื่อวาน + ไอคอน) ----------------
@@ -3310,7 +4516,8 @@
           ? formatDateFull(l.date)
           : "แตะเพื่อดูรายละเอียด";
 
-        return `
+        const logTitle = `${l.fuelType || "เติมน้ำมัน"} · ${l.date ? formatDate(l.date) : ""}`;
+        return swipeWrapHtml("log", l.id != null ? l.id : "", logTitle, `
 <div class="log-item" data-log-id="${logId}">
 
   <div class="log-card-head">
@@ -3326,23 +4533,6 @@
       ${fmt(l.totalCost)}
       <br>
       <small> บาท</small>
-    </div>
-    <div class="log-card-actions">
-        <button
-            type="button"
-            onclick="editLog('${logId}')"
-            title="แก้ไขรายการนี้"
-            style="color: var(--text-muted);">
-            <i class="fas fa-pen"></i>
-        </button>
-
-        <button
-            type="button"
-            onclick="deleteLog('${logId}')"
-            title="ลบรายการนี้"
-            style="color: var(--bad);">
-            <i class="fas fa-trash"></i>
-        </button>
     </div>
   </div>
 
@@ -3405,7 +4595,7 @@
 
   </div></div>
 
-</div>`;
+</div>`);
       }
 
       // ---------------- Log form ----------------
@@ -3429,7 +4619,7 @@
 
         if (!STATE.cars.length) {
           toast("กรุณาเพิ่มรถก่อนบันทึกการเติมน้ำมัน");
-          openView("cars");
+          openCarModal();
           return;
         }
         populateLogCarSelect();
@@ -4529,6 +5719,24 @@
         if (legendEl) legendEl.style.display = "flex";
         if (emptyEl) emptyEl.style.display = "none";
 
+        // ถ้ากราฟยังมองไม่เห็น/ยังไม่ได้จัดวาง (ความกว้าง 0) อย่าเพิ่งสร้าง ไม่งั้น Chart.js
+        // จะวาดที่ขนาดเริ่มต้นแล้วขยายภายหลัง เห็นเป็นแอนิเมชันเติบโตจากมุมซ้ายบน
+        // → รอจนมองเห็นแล้วค่อยสร้าง จะได้แท่งวิ่งขึ้นจากล่างเหมือนตอนเปลี่ยนเดือน
+        if (!canvas.offsetWidth) {
+          STATE.homeChartDeferred = true;
+          if (!STATE.homeChartRO && typeof ResizeObserver !== "undefined") {
+            STATE.homeChartRO = new ResizeObserver(() => {
+              if (STATE.homeChartDeferred && canvas.offsetWidth) {
+                STATE.homeChartDeferred = false;
+                renderHomeChart();
+              }
+            });
+            STATE.homeChartRO.observe(canvas.parentElement || canvas);
+          }
+          return;
+        }
+        STATE.homeChartDeferred = false;
+
         // แกน X = วันที่ของแต่ละรายการ (แค่เลขวัน เพราะอยู่ในเดือนเดียวกันหมดแล้ว)
         const labels = monthLogs.map((l) => String(new Date(l.date).getDate()));
         const costData = monthLogs.map((l) => Number(l.totalCost) || 0);
@@ -4584,7 +5792,9 @@
           },
           options: {
             // วาดซ้ำเงียบ ๆ ตอนข้อมูลจริงมาแทนสแนปช็อต: ปิด animation กันกราฟเด้งซ้ำสองรอบ
-            animation: STATE.quietRepaint ? false : undefined,
+            animation: STATE.quietRepaint ? false : { duration: 800, easing: "easeOutCubic" },
+            // ปรับขนาดตามหน้าจอแล้วไม่ต้องมีแอนิเมชัน (เป็นต้นเหตุที่กราฟขยายจากมุมซ้ายบน)
+            transitions: { resize: { animation: { duration: 0 } } },
             plugins: {
               legend: { display: false },
               tooltip: {
