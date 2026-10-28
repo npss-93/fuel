@@ -809,11 +809,11 @@
               style="
                 color: var(--text-muted);
                 font-size: 13px;
-                line-height: 1.6;
+                line-height: 1.7;
               "
             >
               แอปบันทึกการเติมน้ำมันและคำนวณอัตราสิ้นเปลือง เก็บข้อมูลได้ทั้งใน
-              Google Sheets และ Firebase Realtime Database
+              Google Sheets และ Firebase Realtime Database และเพิ่ม Trip
             </div>
           </div>
         </section>
@@ -1026,6 +1026,19 @@
         <div class="trip-row" style="margin-top: 12px">
           <button class="btn btn-outline" onclick="closeOverlay('timePickerOverlay')">ยกเลิก</button>
           <button class="btn btn-primary" onclick="tpOk()">ตกลง</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ CONFIRM DIALOG (แทน confirm() ของเบราว์เซอร์) ============ -->
+    <div class="confirm-overlay" id="confirmOverlay">
+      <div class="confirm-box" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle">
+        <div class="confirm-ic" id="confirmIc">❓</div>
+        <div class="confirm-title" id="confirmTitle"></div>
+        <div class="confirm-msg" id="confirmMsg"></div>
+        <div class="confirm-btns">
+          <button type="button" class="btn btn-outline" id="confirmCancel">ยกเลิก</button>
+          <button type="button" class="btn btn-primary" id="confirmOk">ตกลง</button>
         </div>
       </div>
     </div>
@@ -2692,11 +2705,12 @@
         }
       }
 
-      function disconnectFirebase() {
+      async function disconnectFirebase() {
         if (
-          !confirm(
-            "ยกเลิกการเชื่อมต่อ Firebase นี้? (ข้อมูลบน Firebase จะไม่ถูกลบ) แล้วคุณสามารถวาง URL ใหม่หรือสลับไปใช้ Google Sheet ได้",
-          )
+          !(await askConfirm(
+            "ข้อมูลบน Firebase จะไม่ถูกลบ แล้วคุณสามารถวาง URL ใหม่ หรือสลับไปใช้ Google Sheet ได้",
+            { title: "ยกเลิกการเชื่อมต่อ Firebase?", ok: "ยกเลิกการเชื่อมต่อ", danger: true, icon: "🔌" },
+          ))
         )
           return;
         const wasActive = STATE.dataSource === "firebase";
@@ -2862,7 +2876,7 @@
             `• เขียนทับ: ${fmtKeyCounts(toUpd)}\n` +
             (mirror ? `• ลบที่ Firebase (ไม่มีใน Sheet แล้ว): ${fmtKeyCounts(toDel)}\n` : "") +
             "\nข้อมูลใน Google Sheet จะไม่ถูกแก้ไข ดำเนินการต่อหรือไม่?";
-          if (!confirm(msg)) {
+          if (!(await askConfirm(msg, { title: "ยืนยันการคัดลอกข้อมูล", ok: "คัดลอก", icon: "🔄" }))) {
             setCopyHint("ยกเลิกการคัดลอกแล้ว");
             return;
           }
@@ -2954,7 +2968,7 @@
             `• เขียนทับ: รถ ${updC} คัน, ประวัติ ${updL} รายการ, Trip ${trips.length - addT} (จุด ${pts.length - addP})\n` +
             (mirror ? `• ลบที่ Sheet (ไม่มีใน Firebase แล้ว): รถ ${delC} คัน, ประวัติ ${delL} รายการ, Trip ${delT} (จุด ${delP})\n` : "") +
             "\nข้อมูลใน Firebase จะไม่ถูกแก้ไข ดำเนินการต่อหรือไม่?";
-          if (!confirm(msg)) {
+          if (!(await askConfirm(msg, { title: "ยืนยันการคัดลอกข้อมูล", ok: "คัดลอก", icon: "🔄" }))) {
             setCopyHint("ยกเลิกการคัดลอกแล้ว");
             return;
           }
@@ -3293,7 +3307,7 @@
 
       async function deleteCarConfirm() {
         const id = document.getElementById("carEditId").value;
-        if (!confirm("ลบรถคันนี้และประวัติการเติมทั้งหมดของรถคันนี้?")) return;
+        if (!(await askConfirm("ประวัติการเติมน้ำมัน Trip และจุดทั้งหมดของรถคันนี้จะถูกลบด้วย ไม่สามารถกู้คืนได้", { title: "ลบรถคันนี้?", ok: "ลบรถ", danger: true }))) return;
         try {
           await apiPost("deleteCar", { id });
           if (STATE.activeCarId === id) STATE.activeCarId = null;
@@ -3353,9 +3367,43 @@
       }
 
 
+      // ----- กล่องยืนยันแบบกำหนดเอง (คืนค่า Promise<boolean>) ใช้แทน confirm() -----
+      let confirmOpen = false;
+      function askConfirm(message, o) {
+        o = o || {};
+        return new Promise((resolve) => {
+          const ov = $id("confirmOverlay"), ok = $id("confirmOk"), cancel = $id("confirmCancel");
+          if (confirmOpen) return resolve(false);
+          confirmOpen = true;
+          $id("confirmIc").textContent = o.icon || (o.danger ? "🗑️" : "❓");
+          $id("confirmTitle").textContent = o.title || "ยืนยันการทำรายการ";
+          $id("confirmMsg").textContent = message || "";
+          ok.textContent = o.ok || "ตกลง";
+          cancel.textContent = o.cancel || "ยกเลิก";
+          ok.className = "btn " + (o.danger ? "btn-danger" : "btn-primary");
+          ov.classList.add("open");
+          const done = (v) => {
+            ov.classList.remove("open");
+            confirmOpen = false;
+            ok.onclick = cancel.onclick = ov.onclick = null;
+            document.removeEventListener("keydown", onKey, true);
+            resolve(v);
+          };
+          const onKey = (e) => {
+            if (e.key === "Escape") { e.stopPropagation(); done(false); }
+            else if (e.key === "Enter") { e.stopPropagation(); e.preventDefault(); done(true); }
+          };
+          ok.onclick = () => done(true);
+          cancel.onclick = () => done(false);
+          ov.onclick = (e) => { if (e.target === ov) done(false); };
+          document.addEventListener("keydown", onKey, true);
+          setTimeout(() => (o.danger ? cancel : ok).focus(), 50);
+        });
+      }
+
       // ----- Swipe ซ้ายเพื่อแสดงปุ่มแก้ไข/ลบ + กดค้างเพื่อเปิดเมนู (ใช้ร่วมกันทั้ง รายการเติม / Trip / จุดใน Trip) -----
       const SWIPE_W = 150;
-      let swipeOpen = null, swipeDrag = null, swipeSuppress = 0, lpTimer = null, ACTION_TARGET = null;
+      let swipeOpen = null, swipeDrag = null, swipeSuppress = 0, swipeDragged = false, lpTimer = null, ACTION_TARGET = null;
       const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
       function swipeWrapHtml(kind, id, title, inner, cls) {
         return `<div class="swipe-wrap ${cls || ""}" data-kind="${kind}" data-id="${escapeHtml(String(id))}" data-title="${escapeHtml(title || "")}">
@@ -3370,17 +3418,17 @@
         const fns = { log: [editLog, deleteLog], point: [openPointModal, deletePoint], trip: [openTripModal, deleteTripConfirm] }[kind];
         if (fns) fns[act === "edit" ? 0 : 1](id);
       }
-      function swipeAct(btn, act) {
-        const w = btn.closest(".swipe-wrap");
+      function swipeActW(w, act) {
         closeSwipe(w);
         swipeDispatch(w.dataset.kind, w.dataset.id, act);
       }
+      function swipeAct(btn, act) { swipeActW(btn.closest(".swipe-wrap"), act); }
       function openSwipe(w) {
         if (swipeOpen && swipeOpen !== w) closeSwipe(swipeOpen);
         swipeOpen = w;
         w.classList.add("is-open");
         const b = w.querySelector(".swipe-body");
-        b.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+        b.style.transition = "transform .17s ease-out";
         b.style.transform = `translateX(${-SWIPE_W}px)`;
       }
       function closeSwipe(w) {
@@ -3395,7 +3443,7 @@
           w._st = setTimeout(() => w.classList.remove("settling"), 280);
         }
         const b = w.querySelector(".swipe-body");
-        b.style.transition = "transform .22s cubic-bezier(.2,.8,.2,1)";
+        b.style.transition = "transform .17s ease-out";
         b.style.transform = "";
         if (swipeOpen === w) swipeOpen = null;
       }
@@ -3413,6 +3461,7 @@
         if (t) setTimeout(() => swipeDispatch(t.kind, t.id, act), 240);
       }
       document.addEventListener("pointerdown", (e) => {
+        swipeDragged = false; // การแตะครั้งใหม่ เริ่มรอบใหม่เสมอ
         const body = e.target.closest && e.target.closest(".swipe-body");
         if (swipeOpen && (!body || body.parentElement !== swipeOpen) && !e.target.closest(".swipe-btn")) closeSwipe(swipeOpen);
         if (!body || (e.pointerType === "mouse" && e.button !== 0)) return;
@@ -3451,7 +3500,7 @@
         const d = swipeDrag;
         swipeDrag = null;
         if (!d || d.mode !== "x") return;
-        swipeSuppress = Date.now() + 350;
+        swipeDragged = true; // click ที่ตามหลังการลาก (เมาส์) ต้องไม่ถือเป็นการแตะ
         d.wrap.classList.remove("dragging");
         if (d.cur < -SWIPE_W / 2) openSwipe(d.wrap); else closeSwipe(d.wrap);
       };
@@ -3460,9 +3509,17 @@
       document.addEventListener("click", (e) => {
         const b = e.target.closest && e.target.closest(".swipe-body");
         if (!b) return;
-        if (Date.now() < swipeSuppress || b.parentElement.classList.contains("is-open")) {
+        const w = b.parentElement;
+        // click ที่เกิดจากการลาก/กดค้าง ไม่ใช่การแตะจริง
+        if (swipeDragged || Date.now() < swipeSuppress) { swipeDragged = false; e.stopPropagation(); e.preventDefault(); return; }
+        if (w.classList.contains("is-open")) {
           e.stopPropagation(); e.preventDefault();
-          if (b.parentElement.classList.contains("is-open") && Date.now() >= swipeSuppress) closeSwipe(b.parentElement);
+          // ระหว่างการ์ดกำลังเลื่อนเปิดอยู่ (~0.2 วินาที) การ์ดยังบังปุ่มอยู่บางส่วน จึงเช็กตำแหน่งที่แตะเทียบกับพื้นที่ปุ่มเอง
+          // ทำให้แตะปุ่มแก้ไข/ลบได้ทันทีตั้งแต่ครั้งแรก ไม่ต้องรอให้แอนิเมชันจบ
+          const r = w.querySelector(".swipe-actions").getBoundingClientRect();
+          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom)
+            swipeActW(w, e.clientX < r.left + r.width / 2 ? "edit" : "del");
+          else closeSwipe(w);
         }
       }, true);
       document.addEventListener("contextmenu", (e) => {
@@ -3770,7 +3827,7 @@
         const editing = STATE.editingTripId ? tripById(STATE.editingTripId) : null;
         const newCarId = editing ? $id("tripCarSelect").value : null;
         const carChanged = !!editing && String(newCarId) !== String(editing.carId);
-        if (carChanged && !confirm("ย้าย Trip นี้ไปรถคันที่เลือก? ประวัติเติมน้ำมันที่บันทึกจาก Trip จะย้ายตามไปด้วย")) return;
+        if (carChanged && !(await askConfirm("ประวัติเติมน้ำมันที่บันทึกจาก Trip นี้จะย้ายตามไปด้วย", { title: "ย้าย Trip ไปรถคันที่เลือก?", ok: "ย้าย", icon: "🚗" }))) return;
         const btn = $id("saveTripBtn");
         try {
           await morph(btn, async () => {
@@ -3797,7 +3854,7 @@
       function openTrip(id) { STATE.openTripId = id; renderTripView(); window.scrollTo(0, 0); }
       function closeTrip() { STATE.openTripId = null; renderTripView(); }
       async function deleteTripConfirm(id) {
-        if (!confirm("ลบ Trip นี้และจุดทั้งหมด? (ประวัติเติมน้ำมันที่เคยบันทึกจาก Trip จะยังอยู่)")) return;
+        if (!(await askConfirm("จุดทั้งหมดใน Trip นี้จะถูกลบ ส่วนประวัติเติมน้ำมันที่เคยบันทึกจาก Trip จะยังอยู่", { title: "ลบ Trip นี้?", ok: "ลบ Trip", danger: true }))) return;
         setBusy("trip", id, true);
         try {
           await apiPost("deleteTrip", { id });
@@ -4108,7 +4165,7 @@
         if (arrive == null) return toast("กรุณาระบุเวลา");
         if (depart != null && depart < arrive) return toast("เวลาออกต้องไม่ก่อนเวลาถึง");
         if (!old && pts.length && arrive < (tripMs(pts[pts.length - 1].arriveAt) || 0) &&
-          !confirm("เวลาของจุดนี้อยู่ก่อนจุดล่าสุด ระบบจะจัดลำดับให้อยู่ก่อนจุดล่าสุด ดำเนินการต่อไหม?")) return;
+          !(await askConfirm("ระบบจะจัดลำดับจุดนี้ให้อยู่ก่อนจุดล่าสุด ถ้าเลือกเวลาผิด ให้กดยกเลิกแล้วแก้ไขเวลา", { title: "เวลาอยู่ก่อนจุดล่าสุด", ok: "ดำเนินการต่อ", icon: "🕒" }))) return;
         const odo = numOrNull($id("ptOdo").value);
         const fuelOn = $id("ptFuelOn").checked;
         const price = numOrNull($id("ptPrice").value);
@@ -4164,7 +4221,7 @@
 
       async function deletePoint(id) {
         const p = STATE.tripPoints.find((x) => String(x.id) === String(id));
-        if (!p || !confirm(`ลบจุด "${p.name}"?` + (p.fuelLogId ? "\nประวัติเติมน้ำมันที่บันทึกจากจุดนี้จะถูกลบด้วย" : ""))) return;
+        if (!p || !(await askConfirm(p.fuelLogId ? "ประวัติเติมน้ำมันที่บันทึกจากจุดนี้จะถูกลบด้วย" : "ไม่สามารถกู้คืนได้", { title: `ลบจุด "${p.name}"?`, ok: "ลบจุด", danger: true }))) return;
         setBusy("point", id, true);
         try {
           if (p.fuelLogId) await apiPost("deleteFuelLog", { id: p.fuelLogId });
@@ -4176,7 +4233,7 @@
 
       // ----- จบ Trip / เปิดใหม่ -----
       async function finishTrip(id) {
-        if (tripPts(id).length < 2 && !confirm("Trip นี้มีไม่ถึง 2 จุด รายงานจะยังไม่มีระยะทาง จบ Trip เลยไหม?")) return;
+        if (tripPts(id).length < 2 && !(await askConfirm("Trip นี้มีไม่ถึง 2 จุด รายงานสรุปจะยังไม่มีระยะทาง", { title: "จบ Trip เลยไหม?", ok: "จบ Trip", icon: "🏁" }))) return;
         try {
           await morph($id("finishTripBtn"), async () => {
             await apiPost("updateTrip", { id, status: "finished", endedAt: toMin(Date.now()) });
@@ -4757,7 +4814,7 @@
           toast("ไม่พบรหัสรายการนี้ ไม่สามารถลบได้");
           return;
         }
-        if (!confirm("ต้องการลบรายการเติมน้ำมันนี้ใช่ไหม? ไม่สามารถกู้คืนได้"))
+        if (!(await askConfirm("ไม่สามารถกู้คืนได้", { title: "ลบรายการเติมน้ำมันนี้?", ok: "ลบ", danger: true })))
           return;
         // แสดง skeleton ที่แถวรายการนี้ (อาจมีซ้ำในหลายรายการ เช่น หน้าหลัก/สรุปผล)
         const rows = document.querySelectorAll(
