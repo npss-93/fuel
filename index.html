@@ -8,6 +8,12 @@
     />
     <title>Full Fuel — บันทึกการเติมน้ำมัน</title>
     <meta name="theme-color" content="#12141A" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="icon-192.png" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="Full Fuel" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <link
       rel="icon"
       type="image/png"
@@ -802,7 +808,7 @@
           <div class="section-title">เกี่ยวกับ</div>
           <div class="card">
             <div style="font-weight: 700; margin-bottom: 4px">
-              Full Fuel v1.7
+              Full Fuel v1.6
             </div>
             <div
               class="ts"
@@ -813,7 +819,7 @@
               "
             >
               แอปบันทึกการเติมน้ำมันและคำนวณอัตราสิ้นเปลือง เก็บข้อมูลได้ทั้งใน
-              Google Sheets และ Firebase Realtime Database และเพิ่ม Trip
+              Google Sheets และ Firebase Realtime Database
             </div>
           </div>
         </section>
@@ -3393,7 +3399,8 @@
             if (e.key === "Escape") { e.stopPropagation(); done(false); }
             else if (e.key === "Enter") { e.stopPropagation(); e.preventDefault(); done(true); }
           };
-          ok.onclick = () => done(true);
+          const t0 = Date.now();
+          ok.onclick = () => { if (Date.now() - t0 > 350) done(true); };
           cancel.onclick = () => done(false);
           ov.onclick = (e) => { if (e.target === ov) done(false); };
           document.addEventListener("keydown", onKey, true);
@@ -3408,8 +3415,8 @@
       function swipeWrapHtml(kind, id, title, inner, cls) {
         return `<div class="swipe-wrap ${cls || ""}" data-kind="${kind}" data-id="${escapeHtml(String(id))}" data-title="${escapeHtml(title || "")}">
           <div class="swipe-actions">
-            <button type="button" class="swipe-btn edit" onclick="swipeAct(this,'edit')"><i class="fas fa-pen"></i><span>แก้ไข</span></button>
-            <button type="button" class="swipe-btn del" onclick="swipeAct(this,'del')"><i class="fas fa-trash"></i><span>ลบ</span></button>
+              <button type="button" class="swipe-btn edit" data-act="edit"><i class="fas fa-pen"></i><span>แก้ไข</span></button>
+              <button type="button" class="swipe-btn del" data-act="del"><i class="fas fa-trash"></i><span>ลบ</span></button>
           </div>
           <div class="swipe-body">${inner}</div>
         </div>`;
@@ -3506,21 +3513,26 @@
       };
       document.addEventListener("pointerup", endSwipe);
       document.addEventListener("pointercancel", endSwipe);
+      // แตะปุ่ม แก้ไข/ลบ: ทำงานตอน "ยกนิ้ว" ทันที ไม่รอ click และไม่สนว่าการ์ดเลื่อนเปิดเสร็จหรือยัง
+      let tapStart = null;
+      document.addEventListener("pointerdown", (e) => { tapStart = { x: e.clientX, y: e.clientY }; }, true);
+      document.addEventListener("pointerup", (e) => {
+        const w = swipeOpen;
+        if (!w || !tapStart) return;
+        if (Math.hypot(e.clientX - tapStart.x, e.clientY - tapStart.y) > 10) return; // เป็นการลาก ไม่ใช่การแตะ
+        const r = w.querySelector(".swipe-actions").getBoundingClientRect();
+        if (e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom) return;
+        tapStart = null;
+        e.preventDefault();
+        swipeActW(w, e.clientX < r.left + r.width / 2 ? "edit" : "del");
+      }, true);
       document.addEventListener("click", (e) => {
+        const btn = e.target.closest && e.target.closest(".swipe-btn");
+        if (btn) { if (e.detail === 0) swipeActW(btn.closest(".swipe-wrap"), btn.dataset.act); return; } // กดด้วยคีย์บอร์ด
         const b = e.target.closest && e.target.closest(".swipe-body");
         if (!b) return;
-        const w = b.parentElement;
-        // click ที่เกิดจากการลาก/กดค้าง ไม่ใช่การแตะจริง
         if (swipeDragged || Date.now() < swipeSuppress) { swipeDragged = false; e.stopPropagation(); e.preventDefault(); return; }
-        if (w.classList.contains("is-open")) {
-          e.stopPropagation(); e.preventDefault();
-          // ระหว่างการ์ดกำลังเลื่อนเปิดอยู่ (~0.2 วินาที) การ์ดยังบังปุ่มอยู่บางส่วน จึงเช็กตำแหน่งที่แตะเทียบกับพื้นที่ปุ่มเอง
-          // ทำให้แตะปุ่มแก้ไข/ลบได้ทันทีตั้งแต่ครั้งแรก ไม่ต้องรอให้แอนิเมชันจบ
-          const r = w.querySelector(".swipe-actions").getBoundingClientRect();
-          if (e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom)
-            swipeActW(w, e.clientX < r.left + r.width / 2 ? "edit" : "del");
-          else closeSwipe(w);
-        }
+        if (b.parentElement.classList.contains("is-open")) { e.stopPropagation(); e.preventDefault(); closeSwipe(b.parentElement); }
       }, true);
       document.addEventListener("contextmenu", (e) => {
         const b = e.target.closest && e.target.closest(".swipe-body");
@@ -5878,6 +5890,10 @@
           },
         });
       }
+    </script>
+    <script>
+      if ("serviceWorker" in navigator)
+        window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
     </script>
   </body>
 </html>
