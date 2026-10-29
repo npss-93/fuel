@@ -2172,6 +2172,7 @@ canvas {
 .trip-card-wrap { margin-bottom: 10px; }
 .trip-card-wrap .trip-card { margin-bottom: 0; }
 .trip-point-wrap { border-radius: var(--radius-md); }
+.swipe-actions, .swipe-btn { touch-action: manipulation; }
 
 /* ============ mini spinner / link field / map locate ============ */
 .mini-spin {
